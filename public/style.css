@@ -1,0 +1,24 @@
+* { box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
+main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+header h1 { font-size: 1.6rem; margin-bottom: 4px; }
+header p { color: #94a3b8; margin-top: 0; }
+.composer { background: #1e293b; border-radius: 12px; padding: 16px; }
+textarea { width: 100%; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; padding: 10px; font-size: 1rem; }
+.composer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 12px; flex-wrap: wrap; }
+select { background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; padding: 6px; }
+button { background: #38bdf8; color: #0f172a; border: 0; border-radius: 8px; padding: 10px 18px; font-weight: 600; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: default; }
+button.approve { background: #4ade80; margin-top: 8px; }
+.card { background: #1e293b; border-radius: 12px; padding: 16px 20px; margin-top: 16px; }
+.card h2 { margin-top: 0; font-size: 1.1rem; }
+.card.error { border: 1px solid #f87171; }
+pre { background: #0f172a; border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 0.85rem; }
+code { color: #7dd3fc; }
+.muted { color: #94a3b8; font-size: 0.9rem; }
+.warn { background: #422006; border: 1px solid #f59e0b; border-radius: 8px; padding: 10px; }
+.pass { background: #166534; border-radius: 6px; padding: 2px 10px; font-weight: 700; }
+.fail { background: #7f1d1d; border-radius: 6px; padding: 2px 10px; font-weight: 700; }
+.run { border-top: 1px solid #334155; padding-top: 8px; margin-top: 8px; }
+footer { margin-top: 32px; color: #64748b; font-size: 0.85rem; }
+footer a { color: #7dd3fc; }
