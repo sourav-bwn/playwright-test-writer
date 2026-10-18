@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plain-English Playwright Test Writer</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>Plain-English Playwright Test Writer</h1>
+    <p>Describe a flow. The agent inspects the demo app, writes a real Playwright test, and runs it only after you approve.</p>
+  </header>
+
+  <section class="composer">
+    <textarea id="message" rows="3" placeholder='Try: "Test that a user can sign up and see the dashboard"'></textarea>
+    <div class="composer-row">
+      <label>Target:
+        <select id="version">
+          <option value="v1">demo app v1 (normal)</option>
+          <option value="v2">demo app v2 (button renamed)</option>
+        </select>
+      </label>
+      <button id="planBtn">Plan the test</button>
+    </div>
+  </section>
+
+  <section id="output"></section>
+
+  <footer>
+    <a href="/demo/v1/signup" target="_blank">Open the demo app</a> Â·
+    Mock data only Â· No OTP/CAPTCHA bypass
+  </footer>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
