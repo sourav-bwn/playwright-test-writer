@@ -31,6 +31,16 @@ npm start
 Set `GEMINI_API_KEY` to let Gemini write the plan (free tier is enough).
 Without a key, a deterministic built-in planner takes over so the agent still works.
 
+## Tests
+
+Unit and API tests for the planner, generator, inspector, demo app and HTTP
+API. No browser or network needed:
+
+```bash
+npm install
+npm test
+```
+
 ## Test cases
 
 | # | Scenario | Expected |
