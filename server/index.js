@@ -107,6 +107,12 @@ function publicView(s) {
   };
 }
 
-app.listen(PORT, () => {
-  console.log(`Plain-English Playwright Test Writer on :${PORT} (demo at /demo/v1/signup)`);
-});
+export { app };
+
+// Listen only when run directly (`node server/index.js`), so tests can import
+// the app and bind it to an ephemeral port instead.
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  app.listen(PORT, () => {
+    console.log(`Plain-English Playwright Test Writer on :${PORT} (demo at /demo/v1/signup)`);
+  });
+}

@@ -3,18 +3,44 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 
+const RUN_TIMEOUT_MS = Number(process.env.RUN_TIMEOUT_MS) || 120000;
+
 function runOnce(testFile, cwd, extraEnv = {}) {
   return new Promise((resolve) => {
     const startedAt = new Date().toISOString();
-    const child = spawn('npx', ['playwright', 'test', testFile, '--reporter=json', '--workers=1'], {
-      cwd,
-      env: { ...process.env, CI: '1', ...extraEnv },
-    });
+    let child;
+    try {
+      child = spawn('npx', ['playwright', 'test', testFile, '--reporter=json', '--workers=1'], {
+        cwd,
+        env: { ...process.env, CI: '1', ...extraEnv },
+      });
+    } catch (e) {
+      resolve(failureResult(startedAt, `Could not start the test runner: ${e.message}`));
+      return;
+    }
     let out = '';
     let err = '';
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+    // Without this handler a missing npx/playwright emits an unhandled 'error'
+    // event and crashes the whole server process.
+    child.on('error', (e) => {
+      finish(failureResult(startedAt, `Could not start the test runner: ${e.message}`));
+    });
+    // A hung run must not pin the session in "running" forever.
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      finish(failureResult(startedAt, `Test run timed out after ${RUN_TIMEOUT_MS / 1000}s and was stopped.`));
+    }, RUN_TIMEOUT_MS);
     child.stdout.on('data', (d) => (out += d));
     child.stderr.on('data', (d) => (err += d));
     child.on('close', (code) => {
+      if (settled) return;
       let report = null;
       try {
         report = JSON.parse(out);
@@ -40,7 +66,7 @@ function runOnce(testFile, cwd, extraEnv = {}) {
           }
         }
       }
-      resolve({
+      finish({
         startedAt,
         exitCode: code,
         passed: code === 0,
@@ -54,7 +80,20 @@ function runOnce(testFile, cwd, extraEnv = {}) {
   });
 }
 
-function explain(result) {
+function failureResult(startedAt, message) {
+  return {
+    startedAt,
+    exitCode: null,
+    passed: false,
+    expected: null,
+    failed: null,
+    durationMs: null,
+    errors: [message],
+    rawTail: message,
+  };
+}
+
+export function explain(result) {
   if (result.passed) return 'The test passed: the flow works end to end.';
   const text = [result.errors.join('\n'), result.rawTail].join('\n');
   const sel = text.match(/getByTestId\('([^']+)'\)/)?.[1] || text.match(/locator\('([^']+)'\)/)?.[1];

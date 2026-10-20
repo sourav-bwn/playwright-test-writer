@@ -14,7 +14,8 @@ export function generateTest({ plan, inspection }) {
   lines.push(`  const stamp = Date.now();`);
   lines.push(`  const user = {`);
   lines.push(`    name: ${JSON.stringify(plan.fields?.name || 'Test User')},`);
-  lines.push(`    email: \`testuser\${stamp}@example.com\`,`);
+  lines.push(`    // Date.now() alone can collide across simultaneous runs; add a random suffix.
+    email: \`testuser\${stamp}-\${Math.random().toString(36).slice(2, 8)}@example.com\`,`);
   lines.push(`    password: ${JSON.stringify(plan.fields?.password || 'Passw0rd!123')},`);
   lines.push(`  };`);
   lines.push(``);
@@ -49,6 +50,11 @@ export function generateTest({ plan, inspection }) {
   return lines.join('\n');
 }
 
-function escapeSq(text) {
-  return String(text).replace(/'/g, "\\'");
+export function escapeSq(text) {
+  // The goal lands inside a single-quoted string in generated code: quotes,
+  // backslashes and raw newlines would otherwise break the file's syntax.
+  return String(text)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r?\n/g, ' ');
 }
