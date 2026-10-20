@@ -68,7 +68,8 @@ function validatePlan(plan) {
   // "Validate fields before running the agent": a test with no real state
   // assertion is rejected and rebuilt stronger rather than run as-is.
   if (plan?.assertions?.every((a) => a === 'url-contains-dashboard')) {
-    problems.push('url-only test rejected: upgraded to state assertions');
+    // Upgraded in place, so this is a note, not an unresolved problem: the
+    // final plan is valid and validation.ok should stay true for it.
     plan.assertions = ['welcome-visible', 'user-record-exists', 'no-duplicate-account'];
     plan.weakRequestUpgraded = true;
   }
