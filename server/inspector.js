@@ -17,10 +17,14 @@ export async function inspectSignupPage(baseUrl, version = 'v1') {
       type: get('type') || 'text',
       id: get('id'),
       testId: get('data-testid'),
-      required: /required/.test(tag),
+      // Match the attribute name itself, not a substring inside a value
+      // (e.g. data-testid="not-required" must not count as required).
+      required: /\srequired(\s|=|\/|>|$)/.test(tag),
     });
   }
-  const buttonTag = (html.match(/<button[^>]*>[^<]*<\/button>/) || [''])[0];
+  // Prefer an explicit submit button; fall back to the first button on the page.
+  const buttonTags = html.match(/<button[^>]*>[^<]*<\/button>/g) || [];
+  const buttonTag = buttonTags.find((b) => /type="submit"/.test(b)) || buttonTags[0] || '';
   const getBtn = (attr) => (buttonTag.match(new RegExp(`${attr}="([^"]*)"`)) || [])[1];
   const submit = {
     id: getBtn('id'),
