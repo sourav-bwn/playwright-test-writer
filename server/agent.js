@@ -26,6 +26,9 @@ async function callGemini(model, prompt) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    // A hung model call must not hang the whole request: give up and let the
+    // fallback model or the built-in planner take over (and say so in llm.note).
+    signal: AbortSignal.timeout(Number(process.env.GEMINI_TIMEOUT_MS) || 20000),
   });
   if (!res.ok) throw new Error(`Gemini ${model} HTTP ${res.status}`);
   const data = await res.json();
