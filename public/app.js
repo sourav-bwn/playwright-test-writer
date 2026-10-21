@@ -143,13 +143,34 @@ async function run(id) {
   window.rig && rig.running();
   box.innerHTML = `<div class="card reveal"><div class="thinking"><span class="spinner"></span><span>Approved. Running the test, then rerunning it to check stability...</span></div></div>`;
   try {
-    const res = await fetch(`/api/run/${id}`, {
+    const t0 = Date.now();
+    const msg = box.querySelector('.thinking span:last-child');
+    const tick = setInterval(() => {
+      const sec = Math.round((Date.now() - t0) / 1000);
+      if (msg) msg.textContent = `Approved. Running the test, then rerunning it to check stability... ${sec}s. The free server usually needs 40-90s for both runs.`;
+    }, 1000);
+    // The POST can outlive the host's proxy timeout, so also poll the session until it settles.
+    let post = fetch(`/api/run/${id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ versionOverride }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Run failed');
+    }).then(async (r) => ({ ok: r.ok, status: r.status, d: await r.json() })).catch(() => null);
+    let data = null;
+    try {
+      while (!data) {
+        const got = await Promise.race([post, new Promise((r) => setTimeout(() => r('poll'), 3000))]);
+        if (got && got !== 'poll' && got.ok) { data = got.d; break; }
+        if (got !== 'poll') post = new Promise(() => {});
+        if (got && got !== 'poll' && !got.ok && got.status !== 409) throw new Error(got.d.error || 'Run failed');
+        const sres = await fetch(`/api/session/${id}`).catch(() => null);
+        if (sres && sres.ok) {
+          const sd = await sres.json();
+          if (sd.status === 'done') data = sd;
+          else if (sd.status === 'error') throw new Error(sd.result?.error || 'Run failed');
+        }
+        if (!data && Date.now() - t0 > 300000) throw new Error('The run is still going after 5 minutes. The server may be overloaded. Reload and try again; nothing was hidden.');
+      }
+    } finally { clearInterval(tick); }
     const r = data.result;
     const passedRuns = r.runs.filter((x) => x.passed).length;
     const total = r.runs.length;
