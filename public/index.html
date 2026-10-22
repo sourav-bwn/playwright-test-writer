@@ -182,7 +182,7 @@ footer{margin-top:60px;text-align:center;color:var(--mu);font-size:13px}
 <div class="lab">Choose a required test case</div><div class="chips" id="chips"></div>
 <label class="lab" for="flow">What should be tested? <small>(plain English)</small></label><textarea id="flow" rows="3"></textarea>
 <label class="lab" for="exp">What result do you expect?</label><input id="exp">
-<label class="lab" for="url">App to test <small>(bundled demo)</small></label><select id="url"><option value="v1">DemoShop v1 - the working app</option><option value="v2">DemoShop v2 - after the "redesign" renamed the sign-up button</option></select>
+<label class="lab" for="url">App to test <small>(bundled demo, or a website you choose)</small></label><select id="url"><option value="v1">DemoShop v1 - the working app</option><option value="v2">DemoShop v2 - after the "redesign" renamed the sign-up button</option><option value="custom">A website I choose - read-only checks</option></select><input id="siteUrl" type="url" placeholder="https://yoursite.example" spellcheck="false" style="display:none;margin-top:8px" /><div id="siteNote" style="display:none;font-size:12px;color:#8a91b8;margin-top:8px;line-height:1.55">Checks against a website you choose are <b>read-only</b>: the agent reads the page and verifies what it shows. It never fills forms, clicks buttons, or changes anything. Creating an account or submitting a form is never automatic - that needs your separate, explicit approval for the exact site and task.</div>
 <div class="err" id="err"></div>
 <button class="cta" id="go" style="animation:none">Start the agent →</button>
 
@@ -196,8 +196,8 @@ footer{margin-top:60px;text-align:center;color:var(--mu);font-size:13px}
 </div>
 
 <div class="gate" id="gate">
-<b>⏸ Human Approval Required (State-Mutating Action)</b>
-<p>The proposed Playwright spec uses synthetic data (<code>@example.test</code>) and will create user records. Review the proposed changes and decision rules before approving.</p>
+<b id="gateTitle">⏸ Human Approval Required (State-Mutating Action)</b>
+<p id="gateBody">The proposed Playwright spec uses synthetic data (<code>@example.test</code>) and will create user records. Review the proposed changes and decision rules before approving.</p>
 <div class="gate-meta" id="gateMeta">Trace: Pending · Idempotency Lock: Armed</div>
 <button class="cta sm" id="ok">Approve &amp; run twice</button>
 <button class="cta sm ghost" id="retrySame">Retry Same Key (Test Lock)</button>
@@ -222,7 +222,7 @@ footer{margin-top:60px;text-align:center;color:var(--mu);font-size:13px}
 
 <section class="sec rv" id="live-run"><h2>Watch the agent work</h2><p>Watch the agent's plan, activity and the real target app side by side during a real run.</p><div class="live-workspace">
 <section class="card live-card"><div class="live-head"><div><strong>Agent activity</strong><div class="live-kicker">REAL AGENT RUN</div></div><span class="live-status" id="liveStatus" data-state="idle" role="status" aria-live="polite"><i></i><span id="liveStatusText">READY</span></span></div><div class="live-body"><div class="live-progress-row"><span id="liveAction">Waiting for a run</span><span id="livePercent">0%</span></div><div class="live-progress"><i id="liveProgressFill"></i></div><div class="live-step-list" id="liveStepList"><div class="live-step"><i>1</i><b>Understand the request</b><small>READY</small></div><div class="live-step"><i>2</i><b>Inspect the target app</b><small>READY</small></div><div class="live-step"><i>3</i><b>Prepare a test plan</b><small>READY</small></div><div class="live-step"><i>4</i><b>Pass the approval gate</b><small>READY</small></div><div class="live-step"><i>5</i><b>Run the first attempt</b><small>READY</small></div><div class="live-step"><i>6</i><b>Verify a fresh rerun</b><small>READY</small></div></div><div class="live-events" id="liveEvents" aria-live="polite" aria-relevant="additions"><div class="live-event">Agent ready. Select a test case above, then start the demo.</div></div><button class="cta live-run-btn" id="startAutonomous">▶ Run a real test</button><p class="live-note">Real agent. The test runs in a real browser on the server; when it finishes, the preview shows the actual screenshots that browser captured.</p><div class="live-approval" id="liveApproval" hidden role="group" aria-labelledby="liveApprovalTitle"><div class="live-approval-copy"><span class="approval-mark">Ⅱ</span><div><strong id="liveApprovalTitle">Review the plan</strong><p>Check the proposed actions in the preview. The test pauses here until you approve it.</p></div></div><div class="live-approval-actions"><button class="cta sm" id="approveLive">Approve &amp; run</button><button class="cta sm ghost" id="declineLive">Cancel run</button></div></div></div></section>
-<section class="card live-card"><div class="live-head"><div><strong>Live target preview</strong><div class="live-kicker" id="previewKicker">LIVE DEMO APP · REAL PAGE</div></div><span class="browser-badge" id="browserBadge" data-state="idle">WAITING</span></div><div class="browser-chrome"><div class="browser-dots"><i></i><i></i><i></i></div><div class="browser-address" id="browserAddress">/demo/v1/signup</div><span style="color:#8189a0;font-size:11px">↻</span></div><div class="browser-viewport" id="browserViewport" data-mode="idle"><span class="demo-preview-state" id="previewState">LIVE APP</span><div class="demo-app"><div class="demo-app-bar"><span>◈ DEMO APP</span><span>Help&nbsp;&nbsp; Account</span></div><div class="demo-app-main" id="demoAppMain"></div></div></div><div class="inspector" id="locatorInspector"><div><small>CURRENT LOCATOR</small><strong id="locatorTitle">Waiting for agent</strong></div><div><small>AGENT ACTION</small><code id="locatorCode">No interaction yet</code></div></div></section></div></section>
+<section class="card live-card"><div class="live-head"><div><strong>Live target preview</strong><div class="live-kicker" id="previewKicker">LIVE DEMO APP · REAL PAGE</div></div><span class="browser-badge" id="browserBadge" data-state="idle">WAITING</span></div><div class="browser-chrome"><div class="browser-dots"><i></i><i></i><i></i></div><div class="browser-address" id="browserAddress">/demo/v1/signup</div><span style="color:#8189a0;font-size:11px">↻</span></div><div class="browser-viewport" id="browserViewport" data-mode="idle"><span class="demo-preview-state" id="previewState">LIVE APP</span><div class="demo-app"><div class="demo-app-bar" id="demoAppBar"><span>◈ DEMO APP</span><span>Help&nbsp;&nbsp; Account</span></div><div class="demo-app-main" id="demoAppMain"></div></div></div><div class="inspector" id="locatorInspector"><div><small>CURRENT LOCATOR</small><strong id="locatorTitle">Waiting for agent</strong></div><div><small>AGENT ACTION</small><code id="locatorCode">No interaction yet</code></div></div></section></div></section>
 
 <section class="sec rv" id="smart-report"><h2>Smart report</h2><p>A live health check built only from the real runs made in this browser session.</p>
 <div class="card report-shell">
@@ -250,6 +250,9 @@ footer{margin-top:60px;text-align:center;color:var(--mu);font-size:13px}
 <script>
 // TestPilot AI - user's approved UI, wired to the REAL backend only.
 // Every plan, run, result and number below comes from /api/plan and /api/run.
+const hostOf=u=>{try{return new URL(u).hostname}catch(_){return u}};
+const SITE_CHECK_LABELS={"page-loads":"the page loads (HTTP 200)","title-contains":"the page title contains","heading-visible":"the main heading shows","text-visible":"the page shows the text","link-visible":"a link shows","form-present":"the page has a form (never filled or submitted)"};
+function siteLabel(a){const m=String(a).match(/^site:([^:]*):([\s\S]*)$/);if(!m)return a;const b=SITE_CHECK_LABELS[m[1]]||m[1];return m[2]?b+" \""+m[2]+"\"":b}
 const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ST=[["Understand your request","Validates input & checks safety rules"],["Look at the website","Saves Source IDs, URLs & UTC retrieval times"],["Plan the test","Enforces stable selectors & upgrades weak checks"],["Ask your permission","Shows proposed test before execution"],["Run the test","Executes in a real browser"],["Run it again","Confirms the result is consistent"]];
 const SC={
@@ -268,13 +271,17 @@ function log(m,c=""){const l=$("#log");if(l.textContent.startsWith("Nothing has"
 function stage(i,s){const e=$("#steps").children[i];if(!e)return;e.className="st "+s;e.querySelector(".n").textContent=s==="done"?"✓":s==="bad"?"✕":i+1;const d=[...$("#steps").children].filter(x=>x.classList.contains("done")).length;$("#bar").style.width=d/6*100+"%"}
 function badge(s){return`<span class="bd ${s}">${{pass:"Passed",fail:"Failed · explained",unc:"Uncertain",pending:"Not run yet"}[s]}</span>`}
 function cards(){$("#cards").innerHTML=Object.keys(SC).map(k=>{const r=res[k],s=r?r.status:"pending";return`<div class="card rc hov"><div class="top"><h3>${SC[k].tc} · ${SC[k].n}</h3>${badge(s)}</div><dl><div><dt>You asked</dt><dd>${esc(r?r.input:SC[k].flow)}</dd></div><div><dt>Expected</dt><dd>${esc(SC[k].exp)}</dd></div><div><dt>What happened</dt><dd>${esc(r?r.actual:"Waiting for a run.")}</dd></div><div><dt>Proof</dt><dd>${esc(r?r.ev:"—")}</dd></div></dl></div>`}).join("");
- const n=Object.keys(res).length;$("#kD").textContent=n+"/4";$("#kU").textContent=reportRuns.reduce((a,r)=>a+(r.passed?2:0),0);$("#kX").textContent="0";$("#rg").style.strokeDashoffset=163.4*(1-n/4)}
-function pick(id){cur=id;document.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.dataset.id===id));$("#flow").value=SC[id].flow;$("#exp").value=SC[id].exp;$("#err").textContent="";$("#url").value=SC[id].planVersion}
+ const n=Object.keys(res).length;$("#kD").textContent=n+"/"+Object.keys(SC).length;$("#kU").textContent=reportRuns.reduce((a,r)=>a+(r.passed?2:0),0);$("#kX").textContent="0";$("#rg").style.strokeDashoffset=163.4*(1-n/Math.max(Object.keys(SC).length,1))}
+function pick(id){cur=id;document.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.dataset.id===id));$("#flow").value=SC[id].flow;$("#exp").value=SC[id].exp;$("#err").textContent="";$("#url").value=SC[id].planVersion;const cstm=SC[id].planVersion==="custom";$("#siteUrl").style.display=cstm?"":"none";$("#siteNote").style.display=cstm?"":"none"}
+$("#url").addEventListener("change",()=>{const c=$("#url").value==="custom";$("#siteUrl").style.display=c?"":"none";$("#siteNote").style.display=c?"":"none";if(c){document.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));if(!SC.custom||!SC.custom.flow){$("#flow").value="";$("#exp").value=""}}})
 function addRule(title,body,kind){const box=$("#rulesBox");if(box.querySelector(".t"))box.innerHTML="";const d=document.createElement("div");d.className="ev";d.innerHTML=`<code>${esc(title)}</code><span>${body}</span>`;box.append(d)}
 
 // ---- real backend calls ----
 async function postPlan(message,version){
  const r=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,version})});
+ const d=await r.json();if(!r.ok)throw new Error(d.error||"Planning failed");return d}
+async function postPlanSite(message,url){
+ const r=await fetch("/api/plan-site",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,url})});
  const d=await r.json();if(!r.ok)throw new Error(d.error||"Planning failed");return d}
 async function postRun(id,override){
  const r=await fetch("/api/run/"+id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(override?{versionOverride:override}:{})});
@@ -301,28 +308,41 @@ async function plan(){
  $("#log").innerHTML="";$("#ev").innerHTML="";$("#code").innerHTML="";$("#bar").style.width="0";
  [...$("#steps").children].forEach((_,i)=>stage(i,""));
  const version=$("#url").value;
+ const custom=version==="custom";
+ let siteUrl="";
+ if(custom){
+  siteUrl=$("#siteUrl").value.trim();
+  if(!/^https?:\/\/[^\s]+\.[^\s]+/.test(siteUrl)){
+   $("#err").textContent="Enter the full website address, starting with https:// (for example https://example.com).";
+   busy=false;$("#go").disabled=false;return}
+  if(!SC.custom)SC.custom={n:"Your website",tc:"CUSTOM",flow:"",exp:"",planVersion:"custom"};
+  SC.custom.flow=f;SC.custom.exp=e;cur="custom";
+  document.querySelectorAll(".chip").forEach(c=>c.classList.remove("on"));
+ }
  const message=e?f+" Expected result: "+e:f;
- liveReset(version);
+ liveReset(custom?siteUrl:version);
  setOrb("work","Reading your request…");stage(0,"act");liveStep(0,"act");
  log("Request received: "+f,"lo");liveEvent("Request received: "+f);
  await new Promise(r=>setTimeout(r,350));stage(0,"done");liveStep(0,"done");
  stage(1,"act");liveStep(1,"act");setOrb("work","Studying the live website…");
- log("Reading the live sign-up page (DemoShop "+version+")…");
- liveEvent("Fetching the real page /demo/"+version+"/signup …");
+ log(custom?("Reading "+hostOf(siteUrl)+" (read-only)…"):("Reading the live sign-up page (DemoShop "+version+")…"));
+ liveEvent(custom?("Fetching "+siteUrl+" (read-only inspection) …"):("Fetching the real page /demo/"+version+"/signup …"));
  const t0=Date.now();
  try{
-  const data=await postPlan(message,version);
+  const data=await (custom?postPlanSite(message,siteUrl):postPlan(message,version));
   session=data;
   const secs=((Date.now()-t0)/1000).toFixed(1);
   const src=data.evidence.source;
   const evd=document.createElement("div");evd.className="ev";
-  evd.innerHTML=`<code>${esc(src.url)}</code><span>HTTP ${esc(String(src.httpStatus))} · ${data.evidence.fieldsFound.length} fields and the submit button found</span><small>Retrieved ${esc(src.retrievedAt.replace("T"," ").slice(0,19))} UTC</small>`;
+  evd.innerHTML=`<code>${esc(src.url)}</code><span>HTTP ${esc(String(src.httpStatus))} · ${custom?Object.keys(data.evidence.selectors).length+" interactive elements catalogued (read-only)":data.evidence.fieldsFound.length+" fields and the submit button found"}</span><small>Retrieved ${esc(src.retrievedAt.replace("T"," ").slice(0,19))} UTC</small>`;
   $("#ev").append(evd);
-  const ev2=document.createElement("div");ev2.className="ev";
-  ev2.innerHTML=`<code>selectors</code><span>${Object.entries(data.evidence.selectors).map(([k,v])=>k+": "+v).join(" · ")}</span><small>Stable data-testid selectors from the live page</small>`;
-  $("#ev").append(ev2);
-  log("Page read in "+secs+"s - "+data.evidence.fieldsFound.length+" fields found, submit button: "+data.evidence.submitFound.label,"lo");
-  liveEvent("Page read: "+data.evidence.fieldsFound.length+" fields, submit \""+data.evidence.submitFound.label+"\"");
+  if(Object.keys(data.evidence.selectors||{}).length){
+   const ev2=document.createElement("div");ev2.className="ev";
+   ev2.innerHTML=`<code>selectors</code><span>${Object.entries(data.evidence.selectors).map(([k,v])=>k+": "+v).join(" · ")}</span><small>Stable data-testid selectors from the live page</small>`;
+   $("#ev").append(ev2);
+  }
+  log(custom?("Page read in "+secs+"s (read-only inspection; nothing was changed)"):("Page read in "+secs+"s - "+data.evidence.fieldsFound.length+" fields found, submit button: "+data.evidence.submitFound.label),"lo");
+  liveEvent(custom?("Page read (read-only): "+Object.keys(data.evidence.selectors).length+" elements catalogued"):("Page read: "+data.evidence.fieldsFound.length+" fields, submit \""+data.evidence.submitFound.label+"\""));
   liveInspect(data.evidence);
   stage(1,"done");liveStep(1,"done");
   stage(2,"act");liveStep(2,"act");setOrb("work","Writing the test…");
@@ -333,16 +353,35 @@ async function plan(){
   liveEvent("Test drafted · "+data.llm.note);
   // explicit decision checks (real)
   addRule("SOURCE_EVIDENCE","Page read from "+esc(src.url)+" at "+esc(src.retrievedAt)+" UTC (HTTP "+src.httpStatus+").");
-  addRule("STABLE_SELECTORS","data-testid selectors preferred: "+Object.values(data.evidence.selectors).join(", ")+".");
-  data.plan.assertions.forEach(a=>addRule(data.validation.repairs.includes(a)?"NO_WEAK_ASSERTIONS":"ASSERTION",esc(ASSERTION_LABELS[a]||a)+(data.validation.repairs.includes(a)?" — added by the safety checker because the request alone was too weak.":"")));
-  if(data.plan.weakRequestUpgraded){
+  if(custom){
+   addRule("READ_ONLY_SCOPE","Every check against "+hostOf(siteUrl)+" is read-only: the page is read and verified, never filled, clicked, submitted, or changed.");
+   data.validation.repairs.forEach(r=>addRule("SAFETY_CHECKER",esc(r)));
+   if(data.plan.stateChangeIntent)addRule("READ_ONLY_LIMIT","Your request mentions changing something on the site (like signing up or submitting a form). That part was not turned into a test: external runs never change anything. Doing that would need your separate, explicit approval - it is never automatic.","warn");
+  }else{
+   addRule("STABLE_SELECTORS","data-testid selectors preferred: "+Object.values(data.evidence.selectors).join(", ")+".");
+  }
+  data.plan.assertions.forEach(a=>addRule(data.validation.repairs.includes(a)?"NO_WEAK_ASSERTIONS":"ASSERTION",esc(ASSERTION_LABELS[a]||siteLabel(a))+(data.validation.repairs.includes(a)?" — added by the safety checker because the request alone was too weak.":"")));
+  if(data.plan.weakRequestUpgraded&&!custom){
    log("Weak request upgraded: the safety checker added "+data.validation.repairs.length+" real check(s): "+data.validation.repairs.join(", "),"lw");
    liveEvent("Safety checker added checks: "+data.validation.repairs.join(", "));}
-  addRule("HUMAN_APPROVAL","Nothing has run yet. Approving executes this exact test twice against DemoShop "+(SC[cur].runOverride||data.plan.version)+".");
-  const rows=[data.plan.goal,"","What the test will check:"].concat(data.plan.assertions.map(a=>" • "+(ASSERTION_LABELS[a]||a)+(data.validation.repairs.includes(a)?"  (added by the safety checker)":"")));
+  if(custom&&data.validation.repairs.length){
+   log("Safety checker: "+data.validation.repairs.join(" "),"lw");
+   liveEvent("Safety checker notes recorded in Decision Checks.");}
+  if(custom&&data.plan.stateChangeIntent){
+   log("Read-only limit: your request mentions changing the site - that part is not automated.","lw");
+   liveEvent("State-change part of the request was NOT automated (read-only rule).");}
+  addRule("HUMAN_APPROVAL",custom?("Nothing has run yet. Approving runs this exact read-only test twice against "+hostOf(siteUrl)+" - nothing is filled, clicked, submitted, or changed on the site."):("Nothing has run yet. Approving executes this exact test twice against DemoShop "+(SC[cur].runOverride||data.plan.version)+"."));
+  const rows=[data.plan.goal,"","What the test will check:"].concat(data.plan.assertions.map(a=>" • "+(ASSERTION_LABELS[a]||siteLabel(a))+(data.validation.repairs.includes(a)?"  (added by the safety checker)":"")));
   $("#plain").innerHTML="<b>IN SIMPLE WORDS</b>"+rows.map(x=>`<div>${esc(x)||" "}</div>`).join("");
   stage(2,"done");liveStep(2,"done");
   stage(3,"hold");liveStep(3,"act");setOrb("hold","Waiting for your approval");
+  if(custom){
+   $("#gateTitle").textContent="⏸ Human Approval Required (Read-Only External Run)";
+   $("#gateBody").textContent="Approving runs the read-only checks above twice against "+hostOf(siteUrl)+" in a real browser on the server. Nothing is filled, clicked, submitted, or changed on the site; no account is created. The site only sees two ordinary page visits.";
+  }else{
+   $("#gateTitle").textContent="⏸ Human Approval Required (State-Mutating Action)";
+   $("#gateBody").innerHTML="The proposed Playwright spec uses synthetic data (<code>@example.test</code>) and will create user records. Review the proposed changes and decision rules before approving.";
+  }
   $("#gateMeta").textContent="Trace: "+data.id+" · Idempotency Lock: Armed (the server rejects a second run while one is in flight)";
   log("Waiting for approval. Nothing has run.","lw");liveEvent("Waiting for your approval. Nothing has run.");
   liveApproval(true);
@@ -360,12 +399,14 @@ async function run(){
  const s=session;
  const override=SC[cur].runOverride||"";
  const target=override||s.plan.version;
+ const siteMode=s.plan.version==="site";
+ const targetLabel=siteMode?hostOf(s.plan.url):("DemoShop "+target);
  runningNow=true;
  stage(3,"done");liveStep(3,"done");
  stage(4,"act");liveStep(4,"act");setOrb("work","Running in a real browser…");
- log("Approved. Run 1 starting against DemoShop "+target+".","lo");
- liveEvent("Approved. Two real browser runs starting against DemoShop "+target+".");
- liveRun(target);
+ log("Approved. Run 1 starting against "+targetLabel+(siteMode?" (read-only)":"")+".","lo");
+ liveEvent("Approved. Two real browser runs starting against "+targetLabel+(siteMode?" (read-only)":"")+".");
+ liveRun(siteMode?s.plan.url:target);
  const t0=Date.now();
  const ticker=setInterval(()=>{const sec=Math.round((Date.now()-t0)/1000);setOrb("work","Running in a real browser… "+sec+"s")},1000);
  try{
@@ -383,13 +424,13 @@ async function run(){
   if(!r.stable){log("The two runs disagreed - this test is flaky.","lb");liveEvent("Runs disagreed: flaky.");}
   const proof=r.runs.map((x,i)=>"run "+(i+1)+": "+(x.passed?"pass":"fail")+" in "+(x.durationMs!=null?(x.durationMs/1000).toFixed(1)+"s":"n/a")).join("; ");
   const actual=pass
-   ?"Passed "+r.runs.filter(x=>x.passed).length+" of "+r.runs.length+" real browser runs in "+secs+"s. Each run used a fresh mock account; duplicates: 0. "+r.runs[0].explanation
+   ?"Passed "+r.runs.filter(x=>x.passed).length+" of "+r.runs.length+" real browser runs in "+secs+"s. "+(siteMode?"Read-only checks: the page was read, never changed. ":"Each run used a fresh mock account; duplicates: 0. ")+r.runs[0].explanation
    :"Failed "+r.runs.filter(x=>!x.passed).length+" of "+r.runs.length+" real browser runs in "+secs+"s. "+r.runs[0].explanation;
-  res[cur]={status:pass?"pass":"fail",input:$("#flow").value.trim(),actual,ev:"Trace "+data.id+" · DemoShop "+data.runAgainst+" · "+proof+" · "+(r.stable?"stable across both runs":"flaky")};
+  res[cur]={status:pass?"pass":"fail",input:$("#flow").value.trim(),actual,ev:"Trace "+data.id+" · "+(siteMode?hostOf(s.plan.url):("DemoShop "+data.runAgainst))+" · "+proof+" · "+(r.stable?"stable across both runs":"flaky")};
   reportRuns.push({scenario:cur,passed:pass,stable:r.stable,durationSec:Number(secs),runs:r.runs.map(x=>({passed:x.passed,durationMs:x.durationMs})),ranAgainst:data.runAgainst,at:new Date().toISOString(),explanation:r.runs[0].explanation});
   window.__noBurst=r.runs.some(x=>x.shot); // keep real run evidence unobstructed
   setOrb(pass?"done":"bad",pass?"Passed twice. Proof saved":"Failed, and explained");
-  liveDone(pass,r.runs[0].explanation);liveEvidence(r.runs,target);
+  liveDone(pass,r.runs[0].explanation);liveEvidence(r.runs,siteMode?s.plan.url:target);
   fin(cur);
  }catch(err){
   clearInterval(ticker);runningNow=false;
@@ -432,21 +473,33 @@ function liveReset(version){
  $("#liveAction").textContent="Preparing a real run";
  $("#liveStatus").dataset.state="work";$("#liveStatusText").textContent="WORKING";
  $("#browserBadge").dataset.state="work";$("#browserBadge").textContent="LIVE APP";
- $("#browserAddress").textContent=location.origin+"/demo/"+version+"/signup";
- $("#previewState").textContent="LIVE APP · DEMOSHOP "+version.toUpperCase();
+ const external=/^https?:\/\//.test(version);
+ $("#browserAddress").textContent=external?version:location.origin+"/demo/"+version+"/signup";
+ $("#previewState").textContent=external?"EXTERNAL SITE · READ-ONLY":"LIVE APP · DEMOSHOP "+version.toUpperCase();
  $("#locatorTitle").textContent="Reading the live page";$("#locatorCode").textContent="…";
- const k=$("#previewKicker");if(k)k.textContent='LIVE DEMO APP · REAL PAGE';
- $("#demoAppMain").innerHTML='<iframe title="Live demo app" src="/demo/'+version+'/signup" style="width:100%;height:100%;min-height:340px;border:0;background:#fff;border-radius:10px"></iframe>'}
+ const k=$("#previewKicker");if(k)k.textContent=external?'EXTERNAL SITE · READ-ONLY CHECKS':'LIVE DEMO APP · REAL PAGE';
+ const bar=$("#demoAppBar");if(bar)bar.innerHTML=external?'<span>◈ EXTERNAL SITE</span><span>READ-ONLY CHECKS</span>':'<span>◈ DEMO APP</span><span>Help&nbsp;&nbsp; Account</span>';
+ if(external){
+  $("#demoAppMain").innerHTML='<div style="padding:20px;color:#c3c9de;font-size:13.5px;line-height:1.65">This is a website you chose. TestPilot checks it <b>read-only</b>: it reads the page and verifies what it shows. It never fills forms, clicks buttons, or changes anything.<br><br>Many sites block embedding, so the page is not shown here live. The runner\'s <b>real screenshots</b> appear here after an approved run.<br><br><a href="'+String(version).replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" style="color:#8ec5ff">Open the site in a new tab ↗</a></div>';
+ }else{
+  $("#demoAppMain").innerHTML='<iframe title="Live demo app" src="/demo/'+version+'/signup" style="width:100%;height:100%;min-height:340px;border:0;background:#fff;border-radius:10px"></iframe>'}}
 function liveInspect(ev){
  $("#browserBadge").dataset.state="done";$("#browserBadge").textContent="PAGE READ";
- $("#locatorTitle").textContent="Real selectors found on the page";
- $("#locatorCode").textContent=Object.entries(ev.selectors).map(([k,v])=>"getByTestId('"+v+"')").join(" · ")}
+ const sel=Object.entries(ev.selectors||{});
+ if(sel.length){
+  $("#locatorTitle").textContent="Real selectors found on the page";
+  $("#locatorCode").textContent=sel.map(([k,v])=>"getByTestId('"+v+"')").join(" · ");
+ }else{
+  $("#locatorTitle").textContent="External site read (read-only)";
+  $("#locatorCode").textContent="The page was read and catalogued. The planned checks only read the page - nothing is filled, clicked, or submitted.";
+ }}
 function liveRun(target){
+ const external=/^https?:\/\//.test(target);
  $("#browserBadge").dataset.state="work";$("#browserBadge").textContent="RUNNING ON SERVER";
- $("#liveAction").textContent="Two real Playwright runs against DemoShop "+target;
- $("#browserAddress").textContent=location.origin+"/demo/"+target+"/signup";
+ $("#liveAction").textContent=external?("Two real read-only Playwright runs against "+hostOf(target)):("Two real Playwright runs against DemoShop "+target);
+ $("#browserAddress").textContent=external?target:location.origin+"/demo/"+target+"/signup";
  $("#locatorTitle").textContent="Test executing in a real browser";
- $("#locatorCode").textContent="Runs happen on the server; the iframe shows the live target page"}
+ $("#locatorCode").textContent=external?"Runs happen on the server in a real browser; the site is read, never changed":"Runs happen on the server; the iframe shows the live target page"}
 function liveEvidence(runs,target){
  const any=runs.some(x=>x.shot);
  if(!any)return; // no capture: keep the live iframe
@@ -455,9 +508,14 @@ function liveEvidence(runs,target){
  box.innerHTML='<div style="background:#0b0e17;padding:10px;border-radius:10px">'+runs.map((x,i)=>x.shot?
   '<figure style="margin:0 0 10px"><img src="'+x.shot+'" alt="Final page state from run '+(i+1)+'" style="width:100%;border-radius:10px;border:1px solid #ffffff22;background:#fff;display:block">'+
   '<figcaption style="color:#c3c9de;font:11px \'JetBrains Mono\',monospace;margin:6px 0 2px">REAL SCREENSHOT · RUN '+(i+1)+' · '+(x.passed?'PASSED':'FAILED')+' · captured '+String(x.startedAt||'').replace('T',' ').slice(0,19)+' UTC by the test runner\'s browser · not a replay</figcaption></figure>':'').join('')+'</div>';
- const back=document.createElement('button');back.className='cta sm ghost';back.textContent='View the live demo page instead';
- back.onclick=()=>liveReset(target);
- box.append(back);
+ if(/^https?:\/\//.test(target)){
+  const a=document.createElement('a');a.className='cta sm ghost';a.textContent='Open the site in a new tab ↗';a.href=target;a.target='_blank';a.rel='noopener';a.style.display='inline-block';a.style.marginTop='4px';
+  box.append(a);
+ }else{
+  const back=document.createElement('button');back.className='cta sm ghost';back.textContent='View the live demo page instead';
+  back.onclick=()=>liveReset(target);
+  box.append(back);
+ }
  const k=$("#previewKicker");if(k)k.textContent='REAL RUN EVIDENCE · CAPTURED IN THE TEST BROWSER';
 }
 function liveDone(pass,expl){
