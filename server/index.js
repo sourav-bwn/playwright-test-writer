@@ -6,6 +6,7 @@ import { createDemoApp } from './demoApp.js';
 import { createPlan } from './agent.js';
 import { generateTest } from './generator.js';
 import { runWithStabilityCheck } from './runner.js';
+import { createSitePlan, generateSiteTest } from './sitePlan.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -56,6 +57,48 @@ app.post('/api/plan', async (req, res) => {
   }
 });
 
+// Plan read-only checks against a user-named external website. The generated
+// test only reads the page: no filling, clicking, submitting or signing up.
+app.post('/api/plan-site', async (req, res) => {
+  try {
+    const message = String(req.body?.message || '').trim();
+    const url = String(req.body?.url || '').trim();
+    if (!message) return res.status(400).json({ error: 'Describe what to check on the page.' });
+    if (!url) return res.status(400).json({ error: 'Give the full website address to check.' });
+    const { plan, inspection, llm, validation } = await createSitePlan(message, url);
+    const code = generateSiteTest({ url: plan.url, goal: plan.goal, checks: plan.checks });
+    const id = `run-${nextId++}`;
+    const file = path.join(root, 'generated-tests', `${id}.spec.js`);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, code);
+    sessions.set(id, {
+      id,
+      kind: 'site',
+      message,
+      plan,
+      inspection: {
+        source: inspection.source,
+        selectors: {},
+        fields: inspection.forms.flatMap((f) => f.inputs),
+        submit: { label: inspection.forms[0]?.buttons?.[0]?.label || '(none)' },
+        forms: inspection.forms,
+        title: inspection.title,
+        h1: inspection.h1,
+      },
+      llm,
+      validation,
+      code,
+      file,
+      status: 'awaiting-approval', // human approval required before any run
+      createdAt: new Date().toISOString(),
+      result: null,
+    });
+    res.json({ ...publicView(sessions.get(id)) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Step 4: human approved -> run the test, then rerun to check stability.
 app.post('/api/run/:id', async (req, res) => {
   const s = sessions.get(req.params.id);
@@ -67,6 +110,12 @@ app.post('/api/run/:id', async (req, res) => {
   s.runAgainst = versionOverride || s.plan.version;
   try {
     s.result = await runWithStabilityCheck(s.file, root, 1, versionOverride ? { DEMO_TARGET_VERSION: versionOverride } : {});
+    if (s.plan?.version === 'site' && s.result?.runs) {
+      // honest plain-English wording for read-only external checks
+      for (const r of s.result.runs) {
+        if (r.passed) r.explanation = 'The read-only checks passed: the page loaded and showed what was asked. Nothing was filled, clicked, or changed.';
+      }
+    }
     s.status = 'done';
   } catch (err) {
     s.status = 'error';
