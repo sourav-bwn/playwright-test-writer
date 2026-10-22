@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Writer - Plain-English Playwright Test Writer</title>
+<meta name="description" content="Describe a user flow in plain English. An AI agent writes a real Playwright test, you approve it, and it runs for real with proof.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><rect width=%27100%27 height=%27100%27 rx=%2720%27 fill=%27%232dd4bf%27/></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand"><span class="brand-mark"></span>Test&nbsp;Writer</div>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#try">Try the agent</a>
+      <a href="#guardrails">Guardrails</a>
+    </div>
+    <span class="live-badge" title="Every run below is a real Playwright run on a live app">Live prototype</span>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-text">
+      <h1>Say it in plain English.<br><span class="accent">We test it for real.</span></h1>
+      <p class="sub">Describe what a user should be able to do. The agent reads the live app, writes a real Playwright test, waits for your approval, then runs it in a real browser and shows you proof.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#try">Try the agent</a>
+        <a class="btn btn-ghost" href="#how">How it works</a>
+      </div>
+    </div>
+    <div class="hero-card">
+      <div class="hero-card-title">What "real" means here</div>
+      <ul class="hero-points">
+        <li><b>Real plan</b> - the agent reads the live sign-up page and quotes the exact selectors it found.</li>
+        <li><b>Real code</b> - you see the generated Playwright test before anything runs.</li>
+        <li><b>Your approval</b> - nothing runs until you say go.</li>
+        <li><b>Real proof</b> - each approved test runs twice in a real browser, with timing and an explanation in plain words.</li>
+      </ul>
+    </div>
+  </div>
+</header>
+
+<section class="section" id="how">
+  <h2>How it works</h2>
+  <p class="section-sub">Four steps. You stay in charge the whole way.</p>
+  <div class="how-grid">
+    <div class="how-card"><div class="how-num">1</div><h3>You describe</h3><p>"Sign up and see my dashboard." Plain words are enough - no selectors, no code.</p></div>
+    <div class="how-card"><div class="how-num">2</div><h3>Agent studies the live app</h3><p>It fetches the real page, lists the fields it found, and drafts a plan plus a Playwright test from selectors that exist right now.</p></div>
+    <div class="how-card"><div class="how-num">3</div><h3>You approve</h3><p>Read the plan and the code. Nothing runs until you press approve - and you can decline.</p></div>
+    <div class="how-card"><div class="how-num">4</div><h3>Proof, twice</h3><p>The test runs in a real browser, then again to check it is stable. You get pass/fail, timing, and a plain-English explanation.</p></div>
+  </div>
+</section>
+
+<section class="section" id="try">
+  <h2>Try the agent</h2>
+  <p class="section-sub">Pick an example or write your own, choose which version of the demo app to test, and watch the agent work.</p>
+
+  <div class="try-grid">
+    <div class="panel try-panel">
+      <div class="panel-title">Describe the flow</div>
+      <div class="chips" id="chips">
+        <button class="chip" data-msg="Sign up for a new account and see my dashboard, with my account record saved.">Sign up and see my dashboard</button>
+        <button class="chip" data-msg="Go to the sign-up page and check the URL changed.">Weak request: only check the URL</button>
+        <button class="chip" data-msg="Register a new user named Asha Rao and make sure the account is stored exactly once.">New user, stored exactly once</button>
+      </div>
+      <textarea id="msgInput" rows="4" placeholder="e.g. Sign up for a new account and see my dashboard, with my account record saved."></textarea>
+      <label class="field-label" for="versionSelect">Which version of the demo app should it test?</label>
+      <select id="versionSelect">
+        <option value="v1">DemoShop v1 - the working app</option>
+        <option value="v2">DemoShop v2 - after a "redesign" renamed the sign-up button</option>
+      </select>
+      <button class="btn btn-primary btn-block" id="planBtn">Ask the agent</button>
+      <p class="hint">The agent always reads the real page before planning. v2 shows what happens when a selector changes.</p>
+    </div>
+
+    <div class="panel work-panel">
+      <div class="pipeline" id="pipeline">
+        <div class="pstep" data-step="request"><span class="dot"></span>Your request</div>
+        <div class="pstep" data-step="inspect"><span class="dot"></span>Agent reads the live page</div>
+        <div class="pstep" data-step="plan"><span class="dot"></span>Plan + code drafted</div>
+        <div class="pstep" data-step="validate"><span class="dot"></span>Safety checker reviews the plan</div>
+        <div class="pstep" data-step="approval"><span class="dot"></span>Your approval</div>
+        <div class="pstep" data-step="run"><span class="dot"></span>Real browser runs (twice)</div>
+        <div class="pstep" data-step="proof"><span class="dot"></span>Proof card</div>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-tab="plan">Plan + code</button>
+        <button class="tab" data-tab="activity">Live activity</button>
+        <button class="tab" data-tab="evidence">Evidence + live page</button>
+      </div>
+
+      <div class="tabpane active" id="pane-plan">
+        <div class="empty-state" id="planEmpty">Ask the agent to start. Its plan, the exact checks, and the generated Playwright code will appear here for your approval.</div>
+        <div id="planContent" class="hidden">
+          <div id="planMeta"></div>
+          <div id="assertionList"></div>
+          <div id="weakUpgrade"></div>
+          <pre class="code" id="codeView"></pre>
+          <div class="gate" id="gate">
+            <div class="gate-row">
+              <label for="runTarget">Run it against:</label>
+              <select id="runTarget">
+                <option value="">Same version as planned</option>
+                <option value="v1">DemoShop v1</option>
+                <option value="v2">DemoShop v2 (after the redesign)</option>
+              </select>
+            </div>
+            <div class="gate-actions">
+              <button class="btn btn-primary" id="approveBtn">Approve and run</button>
+              <button class="btn btn-ghost" id="declineBtn">Decline</button>
+            </div>
+            <p class="hint">Nothing runs until you approve. Choosing v2 replays this exact test after the "redesign" - it should fail and explain why.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabpane" id="pane-activity">
+        <div class="empty-state" id="activityEmpty">While the agent works, each step shows up here in real time.</div>
+        <div class="activity" id="activityLog"></div>
+      </div>
+
+      <div class="tabpane" id="pane-evidence">
+        <div class="empty-state" id="evidenceEmpty">After planning, this shows what the agent actually saw: the live page URL, the fields it found, the selectors it will use, and the page itself.</div>
+        <div id="evidenceContent" class="hidden">
+          <div id="evidenceMeta"></div>
+          <div class="evidence-grid">
+            <div>
+              <div class="mini-title">Fields found on the live page</div>
+              <div id="fieldsFound"></div>
+              <div class="mini-title">Selectors the test will use</div>
+              <div id="selectorsUsed"></div>
+            </div>
+            <div>
+              <div class="mini-title">The live page the agent read <span class="mini-note">(real, served by this app)</span></div>
+              <iframe id="liveFrame" title="Live demo app under test" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="resultArea"></div>
+
+  <div class="history-wrap">
+    <h3 class="history-title">This browser's run history <span class="mini-note">(real runs from this session only)</span></h3>
+    <div id="historyEmpty" class="empty-state">No runs yet. Your completed runs will stack up here with what you asked, what was expected, what actually happened, and the proof.</div>
+    <div id="historyList" class="history-list"></div>
+  </div>
+</section>
+
+<section class="section" id="guardrails">
+  <h2>Guardrails</h2>
+  <p class="section-sub">What the agent will and will not do.</p>
+  <div class="guard-grid">
+    <div class="guard-card"><h3>Human approval gate</h3><p>No test ever runs without a person pressing approve. Declining is always allowed.</p></div>
+    <div class="guard-card"><h3>Fresh mock data only</h3><p>Every run generates a brand-new mock user (timestamp email). No real people's data, and reruns never collide or create duplicate accounts.</p></div>
+    <div class="guard-card"><h3>No OTP or CAPTCHA bypass</h3><p>The agent tests ordinary product flows. It does not try to defeat security checks.</p></div>
+    <div class="guard-card"><h3>Weak requests get stronger</h3><p>"Just check the URL" can pass while the feature is broken, so a safety checker adds real checks and marks them so you can see what changed.</p></div>
+    <div class="guard-card"><h3>Honest failures</h3><p>When the app changes (like a renamed button), the test fails on purpose and names the exact element it could not find.</p></div>
+    <div class="guard-card"><h3>Everything recorded</h3><p>Source URL, retrieval time, selectors, code, run times and explanations are all kept with each run.</p></div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span><b>Test Writer</b> - Plain-English Playwright Test Writer</span>
+    <span class="mini-note">Live prototype for the Ziro Agentic AI Hackathon. Every result on this page comes from a real run; nothing here is scripted.</span>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
