@@ -23,6 +23,14 @@ app.use('/demo', createDemoApp());
 const sessions = new Map();
 let nextId = 1;
 
+// Global capacity control: the free tier cannot run two browser jobs at once
+// (two Playwright instances OOM-restart the instance and wipe in-memory
+// sessions). One run at a time across BOTH demo and external jobs; every
+// other approval gets an honest "busy" answer instead of a crashed server.
+// The slot is released in a finally block, on success AND on every failure.
+const MAX_CONCURRENT_RUNS = Math.max(1, Number(process.env.MAX_CONCURRENT_RUNS) || 1);
+let activeRuns = 0;
+
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 // Step 1-3: collect details, inspect the app, plan the test. Nothing runs yet.
@@ -104,6 +112,16 @@ app.post('/api/run/:id', async (req, res) => {
   const s = sessions.get(req.params.id);
   if (!s) return res.status(404).json({ error: 'Unknown session.' });
   if (s.status === 'running') return res.status(409).json({ error: 'Already running.' });
+  if (activeRuns >= MAX_CONCURRENT_RUNS) {
+    // Global busy: another session's run holds the single browser slot.
+    // The session stays awaiting-approval so the user can approve again once
+    // the other run finishes. We never launch a second browser job.
+    return res.status(409).json({
+      error: 'Another run is in progress right now. This demo runs one browser job at a time (free tier); wait for it to finish, then approve again.',
+      code: 'capacity',
+    });
+  }
+  activeRuns++;
   s.status = 'running';
   s.approvedAt = new Date().toISOString();
   const versionOverride = req.body?.versionOverride === 'v2' ? 'v2' : req.body?.versionOverride === 'v1' ? 'v1' : null;
@@ -120,6 +138,8 @@ app.post('/api/run/:id', async (req, res) => {
   } catch (err) {
     s.status = 'error';
     s.result = { error: err.message };
+  } finally {
+    activeRuns--;
   }
   res.json(publicView(s));
 });
