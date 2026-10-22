@@ -79,3 +79,42 @@ test('readOnlyCheckIdeas suggests only non-mutating checks', async () => {
     assert.ok(!ideas.some((i) => /submit|sign ?up|create/i.test(i.label) && i.id !== 'form-present'));
   } finally { server.close(); }
 });
+
+function startRouteServer(handler) {
+  const server = http.createServer(handler);
+  return listen(server).then((baseUrl) => ({ server, baseUrl }));
+}
+
+test('inspector rejects private hosts when the test-only escape is off', async () => {
+  const { server, baseUrl } = await startRouteServer((req, res) => res.writeHead(200, { 'content-type': 'text/html' }).end('<title>x</title>'));
+  try {
+    await assert.rejects(() => inspectPage(baseUrl + '/', { allowPrivate: false }), /not allowed/);
+    await assert.rejects(() => inspectPage('http://169.254.169.254/latest/meta-data', { allowPrivate: false }), /not allowed/);
+    await assert.rejects(() => inspectPage('http://localhost:3461/', { allowPrivate: false }), /not allowed/);
+  } finally { server.close(); }
+});
+
+test('redirects are followed hop-by-hop with the guard on each hop', async () => {
+  const { server, baseUrl } = await startRouteServer((req, res) => {
+    if (req.url === '/redir') return res.writeHead(302, { location: '/final' }).end();
+    if (req.url === '/final') return res.writeHead(200, { 'content-type': 'text/html' }).end('<html><head><title>Landed</title></head><body><h1>Final page</h1></body></html>');
+    res.writeHead(404).end();
+  });
+  try {
+    const d = await inspectPage(baseUrl + '/redir', { allowPrivate: true });
+    assert.equal(d.source.httpStatus, 200);
+    assert.match(d.source.finalUrl, /\/final$/);
+    assert.equal(d.source.redirects.length, 1);
+    assert.equal(d.title, 'Landed');
+  } finally { server.close(); }
+});
+
+test('a redirect to a non-http(s) target is never followed', async () => {
+  const { server, baseUrl } = await startRouteServer((req, res) => {
+    if (req.url === '/redir-file') return res.writeHead(302, { location: 'file:///etc/passwd' }).end();
+    res.writeHead(404).end();
+  });
+  try {
+    await assert.rejects(() => inspectPage(baseUrl + '/redir-file', { allowPrivate: true }), /http/);
+  } finally { server.close(); }
+});
