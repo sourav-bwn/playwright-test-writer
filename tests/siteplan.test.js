@@ -16,6 +16,7 @@ function startHtmlServer(routes) {
   const server = http.createServer((req, res) => {
     const body = routes[req.url];
     if (body == null) return res.writeHead(404).end('nope');
+    if (typeof body === 'function') return body(req, res);
     res.writeHead(200, { 'content-type': 'text/html' }).end(body);
   });
   return listen(server).then((baseUrl) => ({ server, baseUrl }));
@@ -54,7 +55,10 @@ test('generateSiteTest emits read-only Playwright code (no fill/click/submit)', 
 
 let server, baseUrl, appServer, appUrl;
 before(async () => {
-  const t = await startHtmlServer({ '/': PAGE });
+  const t = await startHtmlServer({
+    '/': PAGE,
+    '/slow': (req, res) => setTimeout(() => res.writeHead(200, { 'content-type': 'text/html' }).end(PAGE), 4000),
+  });
   server = t.server; baseUrl = t.baseUrl;
   appServer = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
   appUrl = `http://127.0.0.1:${appServer.address().port}`;
@@ -144,4 +148,42 @@ test('a state-changing request is flagged and its goal says that part is not aut
   assert.equal(d.plan.stateChangeIntent, true);
   assert.match(d.plan.goal, /NOT automated/i);
   assert.ok(!/\.fill\(|\.click\(|\/signup/.test(d.code));
+});
+
+test('global capacity: a competing session gets an honest 409 busy, the per-session lock still works, and the slot is released', async (t) => {
+  const post = (path, body) => fetch(`${appUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const a = await (await post('/api/plan-site', { url: baseUrl + '/slow', message: 'Check the page loads' })).json();
+  const b = await (await post('/api/plan-site', { url: baseUrl + '/', message: 'Check the page loads and shows the heading Welcome to ShopLite' })).json();
+
+  // A takes the slot (slow page: two runs, seconds of hold)
+  const runA = post(`/api/run/${a.id}`).then((r) => r.json());
+  let aRunning = false;
+  for (let i = 0; i < 30 && !aRunning; i++) {
+    await new Promise((r) => setTimeout(r, 200));
+    aRunning = (await (await fetch(`${appUrl}/api/session/${a.id}`)).json()).status === 'running';
+  }
+  assert.ok(aRunning, 'session A should be running');
+
+  // competing different-session run: declined honestly, never launched
+  const rb = await post(`/api/run/${b.id}`);
+  assert.equal(rb.status, 409);
+  const rbBody = await rb.json();
+  assert.equal(rbBody.code, 'capacity');
+  assert.match(rbBody.error, /one browser job at a time|in progress/i);
+  // b was NOT started
+  assert.equal((await (await fetch(`${appUrl}/api/session/${b.id}`)).json()).status, 'awaiting-approval');
+
+  // the original per-session lock still works
+  const ra2 = await post(`/api/run/${a.id}`);
+  assert.equal(ra2.status, 409);
+  assert.match((await ra2.json()).error, /Already running/);
+
+  // A completes; slot released; B can now run
+  const da = await runA;
+  assert.equal(da.status, 'done');
+  assert.equal(da.result.passed, true);
+  const rb2 = await post(`/api/run/${b.id}`);
+  assert.equal(rb2.status, 200);
+  const db = await rb2.json();
+  assert.equal(db.result.passed, true);
 });
