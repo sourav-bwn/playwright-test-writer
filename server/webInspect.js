@@ -24,7 +24,7 @@ function isPublicIp(ip) {
   );
 }
 
-async function assertPublicHost(hostname) {
+export async function assertPublicHost(hostname) {
   if (!hostname || hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.internal')) {
     throw new Error('That address is not allowed: only public websites can be inspected.');
   }
@@ -46,6 +46,52 @@ async function assertPublicHost(hostname) {
 const attr = (tag, name) => (tag.match(new RegExp(`${name}="([^"]*)"`, 'i')) || [])[1] || null;
 const stripTags = (s) => String(s || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 
+// Validate a full URL or bare hostname against the public-network rules.
+export async function assertPublicUrl(urlOrHost, { allowPrivate = false } = {}) {
+  let u;
+  try { u = new URL(String(urlOrHost)); } catch { u = null; }
+  // The protocol rule always holds, even when the test-only private escape is on.
+  if (u && u.protocol !== 'https:' && u.protocol !== 'http:') {
+    throw new Error('Only http:// and https:// pages can be inspected.');
+  }
+  if (allowPrivate) return;
+  if (u) {
+    await assertPublicHost(u.hostname);
+  } else {
+    await assertPublicHost(String(urlOrHost));
+  }
+}
+
+const MAX_REDIRECTS = 5;
+
+// Fetch with the SSRF guard applied to EVERY hop, not just the first URL:
+// a public page may not redirect the agent onto a private/internal address,
+// and non-http(s) targets are never followed.
+export async function fetchGuarded(startUrl, { allowPrivate = false } = {}) {
+  let current = startUrl.toString();
+  const chain = [];
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    await assertPublicUrl(current, { allowPrivate });
+    const res = await fetch(current, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { 'User-Agent': 'TestPilotAI-Inspector/1.0 (read-only page check)', Accept: 'text/html,*/*' },
+    });
+    if ([301, 302, 303, 307, 308].includes(res.status)) {
+      const loc = res.headers.get('location');
+      if (!loc) return res;
+      const next = new URL(loc, current).toString();
+      chain.push({ from: current, to: next, status: res.status });
+      try { await res.arrayBuffer(); } catch {}
+      current = next;
+      continue;
+    }
+    res._redirectChain = chain;
+    return res;
+  }
+  throw new Error('Too many redirects while reading the page.');
+}
+
 // Read a page and describe what's actually there: title, forms with their
 // fields and buttons, and links. Everything is recorded as evidence with the
 // source URL, HTTP status and UTC retrieval time.
@@ -59,14 +105,8 @@ export async function inspectPage(rawUrl, { allowPrivate = false } = {}) {
   if (url.protocol !== 'https:' && url.protocol !== 'http:') {
     throw new Error('Only http:// and https:// pages can be inspected.');
   }
-  if (!allowPrivate) await assertPublicHost(url.hostname);
-
+  const res = await fetchGuarded(url, { allowPrivate });
   const retrievedAt = new Date().toISOString();
-  const res = await fetch(url, {
-    redirect: 'follow',
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-    headers: { 'User-Agent': 'TestPilotAI-Inspector/1.0 (read-only page check)', Accept: 'text/html,*/*' },
-  });
   const reader = res.body?.getReader?.();
   let html = '';
   if (reader) {
@@ -126,7 +166,7 @@ export async function inspectPage(rawUrl, { allowPrivate = false } = {}) {
   }
 
   return {
-    source: { url: url.toString(), finalUrl: res.url, retrievedAt, httpStatus: res.status },
+    source: { url: url.toString(), finalUrl: res.url, redirects: res._redirectChain || [], retrievedAt, httpStatus: res.status },
     title,
     h1,
     forms,
