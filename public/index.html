@@ -412,6 +412,16 @@ async function run(){
  try{
   const out=await postRun(s.id,override);
   clearInterval(ticker);runningNow=false;
+  if(!out.ok&&out.status===409&&out.data.code==="capacity"){
+   // server busy with another session's run: this session was NOT started; offer the gate again
+   setOrb("hold","Server busy - one run at a time");
+   log("Server busy: "+out.data.error,"lw");
+   liveEvent("Server busy: another run is in progress. Nothing started; approve again when it finishes.");
+   addRule("CAPACITY_CONTROL","The server runs one browser job at a time (free tier). A second approval was honestly declined with HTTP 409 instead of crashing the instance; nothing was run for this approval.");
+   stage(3,"hold");liveStep(3,"act");
+   $("#gate").style.display="block";liveApproval(true);
+   busy=false;$("#go").disabled=false;
+   return}
   if(!out.ok)throw new Error(out.data.error||"Run failed");
   const data=out.data;session=data;const r=data.result;
   const secs=((Date.now()-t0)/1000).toFixed(1);
