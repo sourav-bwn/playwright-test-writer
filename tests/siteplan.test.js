@@ -103,3 +103,45 @@ test('an approved read-only run executes twice and returns real screenshots', as
     assert.ok(run.shot?.startsWith('data:image/png;base64,'));
   }
 });
+
+test('explicitly requested checks are never silently dropped (floor merge)', async () => {
+  const r = await fetch(`${appUrl}/api/plan-site`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: baseUrl + '/', message: 'Check the page loads and shows the heading Welcome to ShopLite' }),
+  });
+  const d = await r.json();
+  assert.ok(d.plan.checks.some((c) => c.type === 'heading-visible' && c.value === 'Welcome to ShopLite'),
+    'requested heading check must be present: ' + JSON.stringify(d.plan.checks));
+});
+
+test('a requested heading that is NOT on the page fails honestly (never green for a reduced goal)', async (t) => {
+  const pr = await fetch(`${appUrl}/api/plan-site`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: baseUrl + '/', message: 'Check the page shows the heading Definitely Not On This Page' }),
+  });
+  const plan = await pr.json();
+  assert.ok(plan.plan.checks.some((c) => c.type === 'heading-visible' && /Definitely Not On This Page/.test(c.value)));
+  const rr = await fetch(`${appUrl}/api/run/${plan.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+  const d = await rr.json();
+  assert.equal(d.status, 'done');
+  assert.equal(d.result.passed, false, 'run must FAIL when the requested heading is absent');
+  assert.ok(d.result.runs.every((x) => x.passed === false));
+});
+
+test('generated external specs carry the browser-side network guard', () => {
+  const code = generateSiteTest({ url: 'https://example.com/', goal: 'g', checks: [{ type: 'page-loads', value: '' }] });
+  assert.ok(code.includes("page.route('**/*'"));
+  assert.ok(code.includes('assertPublicUrl'));
+  assert.ok(code.includes("import { assertPublicUrl } from '../server/webInspect.js'"));
+});
+
+test('a state-changing request is flagged and its goal says that part is not automated', async () => {
+  const r = await fetch(`${appUrl}/api/plan-site`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: baseUrl + '/', message: 'Sign up for a new account on this site' }),
+  });
+  const d = await r.json();
+  assert.equal(d.plan.stateChangeIntent, true);
+  assert.match(d.plan.goal, /NOT automated/i);
+  assert.ok(!/\.fill\(|\.click\(|\/signup/.test(d.code));
+});
