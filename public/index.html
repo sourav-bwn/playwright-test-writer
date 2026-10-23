@@ -386,7 +386,7 @@ async function plan(){
    log("Read-only limit: your request mentions changing the site - that part is not automated.","lw");
    liveEvent("State-change part of the request was NOT automated (read-only rule).");}
   addRule("HUMAN_APPROVAL",custom?("Nothing has run yet. Approving runs this exact read-only test twice against "+hostOf(siteUrl)+" - nothing is filled, clicked, submitted, or changed on the site."):("Nothing has run yet. Approving executes this exact test twice against DemoShop "+(SC[cur].runOverride||data.plan.version)+"."));
-  const rows=[data.plan.goal,"",data.plan.mode==="step-by-step"?"The agent will decide each action live, within these limits:":"What the test will check:"].concat((data.plan.assertions||(data.plan.allowedActions||[]).map(a=>"agent-action:"+a)).map(a=>" • "+(ASSERTION_LABELS[a]||siteLabel(a))+(data.validation.repairs.includes(a)?"  (added by the safety checker)":"")));
+  const rows=[data.plan.goal,"",data.plan.mode==="step-by-step"?"The agent will decide each action live, within these limits:":"What the test will check:"].concat((data.plan.assertions||(data.plan.allowedActions||[]).map(a=>"agent-action:"+a)).map(a=>" • "+(ASSERTION_LABELS[a]||siteLabel(a))+(((data.validation||{}).repairs||[]).includes(a)?"  (added by the safety checker)":"")));
   $("#plain").innerHTML="<b>IN SIMPLE WORDS</b>"+rows.map(x=>`<div>${esc(x)||" "}</div>`).join("");
   stage(2,"done");liveStep(2,"done");
   stage(3,"hold");liveStep(3,"act");setOrb("hold","Waiting for your approval");
