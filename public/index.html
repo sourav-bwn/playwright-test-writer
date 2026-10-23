@@ -180,6 +180,11 @@ footer{margin-top:60px;text-align:center;color:var(--mu);font-size:13px}
 @keyframes tpPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 @keyframes tpLoopPulse{0%,100%{box-shadow:0 0 0 #38bdf800}50%{box-shadow:0 0 14px #38bdf844}}
 @media (max-width:700px){.tp-node{width:44px}.tp-node p{font-size:8px}}
+.cta:not(.ghost):not(:disabled){box-shadow:0 0 18px color-mix(in srgb,var(--a) 65%,transparent),0 0 46px color-mix(in srgb,var(--a) 25%,transparent),0 10px 40px color-mix(in srgb,var(--a) 40%,transparent);animation:up .8s .35s backwards,neonPulse 2.6s ease-in-out 1.2s infinite}
+.cta:not(.ghost):hover:not(:disabled){box-shadow:0 0 26px color-mix(in srgb,var(--a) 85%,transparent),0 0 70px color-mix(in srgb,var(--a) 35%,transparent),0 16px 50px color-mix(in srgb,var(--b) 45%,transparent)}
+.cta:disabled{box-shadow:none;filter:saturate(.5)}
+@keyframes neonPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18)}}
+@media (prefers-reduced-motion:reduce){.cta:not(.ghost):not(:disabled){animation:up .8s .35s backwards}}
 </style>
 </head>
 <body>
