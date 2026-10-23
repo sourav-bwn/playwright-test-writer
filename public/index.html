@@ -427,7 +427,7 @@ async function run(){
  stage(3,"done");liveStep(3,"done");
  stage(4,"act");liveStep(4,"act");setOrb("work","Running in a real browser…");
  log("Approved. Run 1 starting against "+targetLabel+(siteMode?" (read-only)":"")+".","lo");
- liveEvent("Approved. Two real browser runs starting against "+targetLabel+(siteMode?" (read-only)":"")+".");
+ liveEvent(agentRun?("Approved. Step-by-step agent starting against "+targetLabel+" - the AI chooses each action live, one validated step at a time."):("Approved. Two real browser runs starting against "+targetLabel+(siteMode?" (read-only)":"")+"."));
  liveRun(siteMode?s.plan.url:target);
  startLiveFeed(s.id); // show the actual test browser while it acts
  const t0=Date.now();
@@ -450,7 +450,7 @@ async function run(){
   const secs=((Date.now()-t0)/1000).toFixed(1);
   const pass=r.passed;
   r.runs.forEach((x,i)=>{
-   log("Run "+(i+1)+" "+(x.passed?"PASSED":"FAILED")+" in "+(x.durationMs!=null?(x.durationMs/1000).toFixed(1)+"s":"n/a")+" - "+x.explanation,x.passed?"lo":"lb");
+   log((r.mode==="step-by-step"?"Agent run ":"Run "+(i+1)+" ")+(x.passed?"PASSED":"FAILED")+" in "+(x.durationMs!=null?(x.durationMs/1000).toFixed(1)+"s":"n/a")+" - "+x.explanation,x.passed?"lo":"lb");
    liveEvent("Run "+(i+1)+": "+(x.passed?"PASS":"FAIL")+" ("+(x.durationMs!=null?(x.durationMs/1000).toFixed(1)+"s":"n/a")+")");
    stage(4+i,x.passed?"done":"bad");liveStep(4+i,x.passed?"done":"bad");
   });
@@ -583,7 +583,10 @@ function liveInspect(ev){
 function liveRun(target){
  const external=/^https?:\/\//.test(target);
  $("#browserBadge").dataset.state="work";$("#browserBadge").textContent="RUNNING ON SERVER";
- $("#liveAction").textContent=external?("Two real read-only Playwright runs against "+hostOf(target)):("Two real Playwright runs against DemoShop "+target);
+ const agentM=session&&session.plan&&session.plan.mode==="step-by-step";
+ $("#liveAction").textContent=agentM?("Step-by-step agent acting live against DemoShop "+target):(external?("Two real read-only Playwright runs against "+hostOf(target)):("Two real Playwright runs against DemoShop "+target));
+ if(agentM){const ls=document.querySelectorAll("#liveStepList .live-step b");if(ls[4])ls[4].textContent="Agent acts step by step";if(ls[5])ls[5].textContent="Verify the outcome on the page";}
+ else{const ls=document.querySelectorAll("#liveStepList .live-step b");if(ls[4])ls[4].textContent="Run the first attempt";if(ls[5])ls[5].textContent="Verify a fresh rerun";}
  $("#browserAddress").textContent=external?target:location.origin+"/demo/"+target+"/signup";
  $("#locatorTitle").textContent="Test executing in a real browser";
  $("#locatorCode").textContent=external?"Runs happen on the server in a real browser; the site is read, never changed":"Runs happen on the server; the iframe shows the live target page"}
