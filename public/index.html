@@ -54,8 +54,8 @@ h1{font-size:clamp(36px,6vw,68px);line-height:1.04;letter-spacing:-.035em;font-w
 .card h3{margin:0 0 6px;font-size:18px}.card p{margin:0;color:var(--mu);font-size:14.5px}
 .bench{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:860px){.bench{grid-template-columns:1fr}}
 .lab{display:block;font-size:13px;font-weight:600;margin:16px 0 7px}.lab small{color:var(--mu);font-weight:400}
-.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{cursor:pointer;border:1px solid var(--bd);background:var(--sf);color:var(--mu);padding:9px 15px;border-radius:99px;font:600 13px 'Manrope',sans-serif;transition:.3s}
-.chip:hover{color:var(--tx);transform:translateY(-2px)}.chip.on{color:#05060d;background:linear-gradient(120deg,var(--b),var(--a));border-color:transparent}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip,.mchip{cursor:pointer;border:1px solid var(--bd);background:var(--sf);color:var(--mu);padding:9px 15px;border-radius:99px;font:600 13px 'Manrope',sans-serif;transition:.3s}
+.chip:hover,.mchip:hover{color:var(--tx);transform:translateY(-2px)}.chip.on,.mchip.on{color:#05060d;background:linear-gradient(120deg,var(--b),var(--a));border-color:transparent}
 .judge-bar{margin-top:12px;padding:10px 12px;border-radius:14px;border:1px dashed var(--bd);background:rgba(255,255,255,.02)}
 .judge-bar small{display:block;font:600 10.5px 'JetBrains Mono',monospace;color:var(--b);letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px}
 .judge-btns{display:flex;flex-wrap:wrap;gap:6px}
@@ -183,6 +183,7 @@ footer{margin-top:60px;text-align:center;color:var(--mu);font-size:13px}
 <label class="lab" for="flow">What should be tested? <small>(plain English)</small></label><textarea id="flow" rows="3"></textarea>
 <label class="lab" for="exp">What result do you expect?</label><input id="exp">
 <label class="lab" for="url">App to test <small>(bundled demo, or a website you choose)</small></label><select id="url"><option value="v1">DemoShop v1 - the working app</option><option value="v2">DemoShop v2 - after the "redesign" renamed the sign-up button</option><option value="custom">A website I choose - read-only checks</option></select><input id="siteUrl" type="url" placeholder="https://yoursite.example" spellcheck="false" style="display:none;margin-top:8px" /><div id="siteNote" style="display:none;font-size:12px;color:#8a91b8;margin-top:8px;line-height:1.55">Checks against a website you choose are <b>read-only</b>: the agent reads the page and verifies what it shows. It never fills forms, clicks buttons, or changes anything. Creating an account or submitting a form is never automatic - that needs your separate, explicit approval for the exact site and task.</div>
+<div class="lab">How should the agent work?</div><div class="chips" id="modeChips"><button type="button" class="mchip on" data-mode="test">Generate test &rarr; approve &rarr; run twice</button><button type="button" class="mchip" data-mode="agent">Step-by-step: AI decides each action live</button></div><div id="agentNote" style="display:none;font-size:12px;color:#8a91b8;margin-top:8px;line-height:1.55">Step-by-step mode: after your approval, the agent reads the live page structure (text, not screenshot pixels) and the AI chooses one action at a time - fill, click, check or stop. Safety checks validate every proposed action before it runs; DemoShop only; max 8 steps / 4 minutes; the whole action history is kept as evidence.</div>
 <div class="err" id="err"></div>
 <button class="cta" id="go" style="animation:none">Start the agent →</button>
 
@@ -283,6 +284,12 @@ async function postPlan(message,version){
 async function postPlanSite(message,url){
  const r=await fetch("/api/plan-site",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,url})});
  const d=await r.json();if(!r.ok)throw new Error(d.error||"Planning failed");return d}
+async function postAgentPlan(message,version){
+ const r=await fetch("/api/agent/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,version})});
+ const d=await r.json();if(!r.ok)throw new Error(d.error||"Agent planning failed");return d}
+async function postAgentRun(id){
+ const r=await fetch("/api/agent/run/"+id,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+ const d=await r.json();return{ok:r.ok,status:r.status,data:d}}
 async function postRun(id,override){
  const r=await fetch("/api/run/"+id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(override?{versionOverride:override}:{})});
  const d=await r.json();return{ok:r.ok,status:r.status,data:d}}
@@ -309,6 +316,10 @@ async function plan(){
  [...$("#steps").children].forEach((_,i)=>stage(i,""));
  const version=$("#url").value;
  const custom=version==="custom";
+ const agentMode=MODE==="agent";
+ if(agentMode&&custom){
+  $("#err").textContent="Step-by-step agent mode works on the bundled DemoShop only - pick DemoShop v1 or v2 above. (External websites stay read-only, so the agent never acts on them.)";
+  busy=false;$("#go").disabled=false;return}
  let siteUrl="";
  if(custom){
   siteUrl=$("#siteUrl").value.trim();
@@ -329,7 +340,7 @@ async function plan(){
  liveEvent(custom?("Fetching "+siteUrl+" (read-only inspection) …"):("Fetching the real page /demo/"+version+"/signup …"));
  const t0=Date.now();
  try{
-  const data=await (custom?postPlanSite(message,siteUrl):postPlan(message,version));
+  const data=await (agentMode?postAgentPlan(message,version):(custom?postPlanSite(message,siteUrl):postPlan(message,version)));
   session=data;
   const secs=((Date.now()-t0)/1000).toFixed(1);
   const src=data.evidence.source;
@@ -347,7 +358,7 @@ async function plan(){
   stage(1,"done");liveStep(1,"done");
   stage(2,"act");liveStep(2,"act");setOrb("work","Writing the test…");
   const c=$("#code");c.classList.add("scan");
-  data.code.split("\n").forEach(t=>{const d=document.createElement("div");d.className=/^import|^test\(/.test(t)?"k":"";d.textContent=t||" ";c.append(d)});
+  (data.code||("// Step-by-step agent mode\n// No test is written up front.\n// After you approve, the AI reads the live page structure\n// and chooses one action at a time: "+(data.plan.allowedActions||[]).join(", ")+".\n// Limits: max "+data.plan.maxSteps+" steps / "+data.plan.maxSeconds+"s. "+data.plan.boundary)).split("\n").forEach(t=>{const d=document.createElement("div");d.className=/^import|^test\(/.test(t)?"k":"";d.textContent=t||" ";c.append(d)});
   c.classList.remove("scan");
   log("Plan ready ("+data.llm.note+")","lo");
   liveEvent("Test drafted · "+data.llm.note);
@@ -360,7 +371,11 @@ async function plan(){
   }else{
    addRule("STABLE_SELECTORS","data-testid selectors preferred: "+Object.values(data.evidence.selectors).join(", ")+".");
   }
-  data.plan.assertions.forEach(a=>addRule(data.validation.repairs.includes(a)?"NO_WEAK_ASSERTIONS":"ASSERTION",esc(ASSERTION_LABELS[a]||siteLabel(a))+(data.validation.repairs.includes(a)?" — added by the safety checker because the request alone was too weak.":"")));
+  if(data.plan.mode==="step-by-step"){
+   addRule("AGENT_MODE","Step-by-step mode: the AI reads the live page structure (text, not screenshot pixels) and chooses ONE action per step. Deterministic safety checks validate every proposed action before it runs; rejected actions never execute.");
+   addRule("AGENT_BOUNDS","Limits: max "+data.plan.maxSteps+" steps, "+data.plan.maxSeconds+"s, DemoShop only - the run aborts if the browser leaves the demo app. Synthetic data only.");
+  }
+  (data.plan.assertions||[]).forEach(a=>addRule(data.validation.repairs.includes(a)?"NO_WEAK_ASSERTIONS":"ASSERTION",esc(ASSERTION_LABELS[a]||siteLabel(a))+(data.validation.repairs.includes(a)?" — added by the safety checker because the request alone was too weak.":"")));
   if(data.plan.weakRequestUpgraded&&!custom){
    log("Weak request upgraded: the safety checker added "+data.validation.repairs.length+" real check(s): "+data.validation.repairs.join(", "),"lw");
    liveEvent("Safety checker added checks: "+data.validation.repairs.join(", "));}
@@ -371,14 +386,19 @@ async function plan(){
    log("Read-only limit: your request mentions changing the site - that part is not automated.","lw");
    liveEvent("State-change part of the request was NOT automated (read-only rule).");}
   addRule("HUMAN_APPROVAL",custom?("Nothing has run yet. Approving runs this exact read-only test twice against "+hostOf(siteUrl)+" - nothing is filled, clicked, submitted, or changed on the site."):("Nothing has run yet. Approving executes this exact test twice against DemoShop "+(SC[cur].runOverride||data.plan.version)+"."));
-  const rows=[data.plan.goal,"","What the test will check:"].concat(data.plan.assertions.map(a=>" • "+(ASSERTION_LABELS[a]||siteLabel(a))+(data.validation.repairs.includes(a)?"  (added by the safety checker)":"")));
+  const rows=[data.plan.goal,"",data.plan.mode==="step-by-step"?"The agent will decide each action live, within these limits:":"What the test will check:"].concat((data.plan.assertions||(data.plan.allowedActions||[]).map(a=>"agent-action:"+a)).map(a=>" • "+(ASSERTION_LABELS[a]||siteLabel(a))+(data.validation.repairs.includes(a)?"  (added by the safety checker)":"")));
   $("#plain").innerHTML="<b>IN SIMPLE WORDS</b>"+rows.map(x=>`<div>${esc(x)||" "}</div>`).join("");
   stage(2,"done");liveStep(2,"done");
   stage(3,"hold");liveStep(3,"act");setOrb("hold","Waiting for your approval");
-  if(custom){
+  if(agentMode){
+   $("#gateTitle").textContent="⏸ Human Approval Required (Step-By-Step Agent)";
+   $("#gateBody").innerHTML="After approval, the AI chooses each action live on DemoShop "+data.plan.version+" - one validated action at a time, synthetic data only, max "+data.plan.maxSteps+" steps / "+data.plan.maxSeconds+"s. The full action history is kept as evidence.";
+   $("#ok").textContent="Approve & start the agent";
+  }else if(custom){
    $("#gateTitle").textContent="⏸ Human Approval Required (Read-Only External Run)";
    $("#gateBody").textContent="Approving runs the read-only checks above twice against "+hostOf(siteUrl)+" in a real browser on the server. Nothing is filled, clicked, submitted, or changed on the site; no account is created. The site only sees two ordinary page visits.";
   }else{
+   $("#ok").textContent="Approve & run twice";
    $("#gateTitle").textContent="⏸ Human Approval Required (State-Mutating Action)";
    $("#gateBody").innerHTML="The proposed Playwright spec uses synthetic data (<code>@example.test</code>) and will create user records. Review the proposed changes and decision rules before approving.";
   }
@@ -397,7 +417,8 @@ async function run(){
  if(!session||runningNow)return;
  $("#gate").style.display="none";liveApproval(false);
  const s=session;
- const override=SC[cur].runOverride||"";
+ const agentRun=s.plan&&s.plan.mode==="step-by-step";
+ const override=agentRun?"":(SC[cur].runOverride||"");
  const target=override||s.plan.version;
  const siteMode=s.plan.version==="site";
  const targetLabel=siteMode?hostOf(s.plan.url):("DemoShop "+target);
@@ -412,7 +433,7 @@ async function run(){
  const t0=Date.now();
  const ticker=setInterval(()=>{const sec=Math.round((Date.now()-t0)/1000);setOrb("work","Running in a real browser… "+sec+"s")},1000);
  try{
-  const out=await postRun(s.id,override);
+  const out=agentRun?await postAgentRun(s.id):await postRun(s.id,override);
   clearInterval(ticker);runningNow=false;stopLiveFeed();
   if(!out.ok&&out.status===409&&out.data.code==="capacity"){
    // server busy with another session's run: this session was NOT started; offer the gate again
@@ -434,6 +455,12 @@ async function run(){
    stage(4+i,x.passed?"done":"bad");liveStep(4+i,x.passed?"done":"bad");
   });
   if(!r.stable){log("The two runs disagreed - this test is flaky.","lb");liveEvent("Runs disagreed: flaky.");}
+  if(r.mode==="step-by-step"&&r.runs[0].steps){
+   stage(5,r.passed?"done":"bad");liveStep(5,r.passed?"done":"bad");
+   r.runs[0].steps.forEach(st=>{log("Step "+st.step+": "+st.action+(st.testId?" ["+st.testId+"]":"")+(st.value?" = "+st.value:"")+(st.ok?"":" - REJECTED/FAILED: "+(st.error||""))+(st.model?" · "+st.model:""),st.ok?"lo":"lb");});
+   liveEvent("Agent acted "+r.runs[0].steps.length+" step(s), each chosen by the model and validated before execution.");
+   addRule("AGENT_EVIDENCE","Step-by-step run finished: "+r.runs[0].steps.length+" action(s), model-chosen and safety-validated, outcome "+(r.passed?"confirmed on the real page":"not confirmed")+". Models used: "+((r.runs[0].modelsUsed||[]).join(", ")||"n/a")+".");
+  }
   const proof=r.runs.map((x,i)=>"run "+(i+1)+": "+(x.passed?"pass":"fail")+" in "+(x.durationMs!=null?(x.durationMs/1000).toFixed(1)+"s":"n/a")).join("; ");
   const actual=pass
    ?"Passed "+r.runs.filter(x=>x.passed).length+" of "+r.runs.length+" real browser runs in "+secs+"s. "+(siteMode?"Read-only checks: the page was read, never changed. ":"Each run used a fresh mock account; duplicates: 0. ")+r.runs[0].explanation
@@ -506,7 +533,7 @@ async function retrySame(){
  if(!session||!runningNow){
   log("Duplicate-retry test: start and approve a run first, then press this while it runs. The server will reject the duplicate.","lw");
   return}
- const out=await postRun(session.id,SC[cur].runOverride||"");
+ const out=session.plan&&session.plan.mode==="step-by-step"?await postAgentRun(session.id):await postRun(session.id,SC[cur].runOverride||"");
  if(!out.ok&&(out.status===409||/Already running/i.test(out.data.error||""))){
   log("Duplicate run blocked by the server: HTTP 409 \""+(out.data.error||"Already running.")+"\"","lb");
   liveEvent("Duplicate retry blocked (HTTP 409).");
@@ -614,6 +641,8 @@ $("#steps").innerHTML=ST.map((s,i)=>`<div class="st"><div class="n">${i+1}</div>
 $("#chips").innerHTML=Object.keys(SC).map(k=>`<button class="chip" data-id="${k}">${SC[k].tc} · ${SC[k].n}</button>`).join("");
 $("#chips").onclick=e=>{const c=e.target.closest(".chip");if(c&&!busy)pick(c.dataset.id)};
 document.querySelectorAll(".tb").forEach(t=>t.onclick=()=>{document.querySelectorAll(".tb,.pane").forEach(x=>x.classList.remove("on"));t.classList.add("on");$("#"+t.dataset.p).classList.add("on")});
+let MODE="test";
+$("#modeChips").onclick=e=>{const c=e.target.closest(".mchip");if(c&&!busy){MODE=c.dataset.mode;document.querySelectorAll(".mchip").forEach(x=>x.classList.toggle("on",x===c));$("#agentNote").style.display=MODE==="agent"?"":"none";if(MODE==="agent"&&$("#url").value==="custom"){$("#url").value="v1";$("#siteUrl").style.display="none";$("#siteNote").style.display="none"}}};
 $("#go").onclick=plan;$("#ok").onclick=run;$("#no").onclick=no;$("#retrySame").onclick=retrySame;
 $("#jUncertain").onclick=jUncertain;$("#jSafety").onclick=jSafety;$("#jDup").onclick=jDup;
 const al=$("#approveLive");if(al)al.onclick=run;const dl=$("#declineLive");if(dl)dl.onclick=no;
