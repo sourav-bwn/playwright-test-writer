@@ -1,9 +1,11 @@
 import express from 'express';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDemoApp } from './demoApp.js';
 import { createPlan } from './agent.js';
+import { inspectSignupPage } from './inspector.js';
 import { generateTest, signupSteps } from './generator.js';
 import { runWithStabilityCheck } from './runner.js';
 import { createSitePlan, generateSiteTest, siteSteps } from './sitePlan.js';
@@ -34,12 +36,26 @@ let activeRuns = 0;
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
+// Guardrail: prompts must use synthetic data only. Blocks obvious personal-data
+// patterns (real-looking emails, phone numbers, long ID/card numbers). This is
+// a basic pattern check, not a guarantee that all personal data is detected.
+const PII_PATTERNS = [
+  /[\w.+-]+@[\w-]+\.[\w.]+/, // email address
+  /\b\d{12,16}\b/, // Aadhaar / card-length number
+  /(?:\+?\d[\d\s()-]{8,}\d)/, // phone-like run of 10+ digits
+];
+function findObviousPii(text) {
+  return PII_PATTERNS.some((re) => re.test(text));
+}
+const PII_ERROR = 'That looks like it contains personal data (an email, phone or ID number). Use synthetic test data only - the agent never runs real personal information.';
+
 // Step 1-3: collect details, inspect the app, plan the test. Nothing runs yet.
 app.post('/api/plan', async (req, res) => {
   try {
     const message = String(req.body?.message || '').trim();
     const version = req.body?.version === 'v2' ? 'v2' : 'v1';
     if (!message) return res.status(400).json({ error: 'Describe the flow to test.' });
+    if (findObviousPii(message)) return res.status(400).json({ error: PII_ERROR, code: 'pii-detected' });
     const { plan, inspection, llm, validation } = await createPlan(message, BASE_URL, version);
     const code = generateTest({ plan, inspection });
     const id = `run-${nextId++}`;
@@ -75,6 +91,7 @@ app.post('/api/plan-site', async (req, res) => {
     const url = String(req.body?.url || '').trim();
     if (!message) return res.status(400).json({ error: 'Describe what to check on the page.' });
     if (!url) return res.status(400).json({ error: 'Give the full website address to check.' });
+    if (findObviousPii(message)) return res.status(400).json({ error: PII_ERROR, code: 'pii-detected' });
     const { plan, inspection, llm, validation } = await createSitePlan(message, url);
     const code = generateSiteTest({ url: plan.url, goal: plan.goal, checks: plan.checks });
     const id = `run-${nextId++}`;
@@ -115,6 +132,23 @@ app.post('/api/run/:id', async (req, res) => {
   const s = sessions.get(req.params.id);
   if (!s) return res.status(404).json({ error: 'Unknown session.' });
   if (s.status === 'running') return res.status(409).json({ error: 'Already running.' });
+  // Idempotency lock: a deterministic signature of this exact approved request
+  // (generated test + target version). Once it has executed, a retry of the
+  // same request returns the existing result instead of executing twice.
+  const runSignature = crypto
+    .createHash('sha256')
+    .update(s.code + '|' + (req.body?.versionOverride || s.plan.version))
+    .digest('hex')
+    .slice(0, 16);
+  s.executedSignatures = s.executedSignatures || [];
+  if (s.executedSignatures.includes(runSignature)) {
+    return res.status(409).json({
+      error: 'This approved request was already executed; retrying it does not run it twice. Start a new plan to run the flow again.',
+      code: 'already-executed',
+      runSignature,
+      result: s.result,
+    });
+  }
   if (activeRuns >= MAX_CONCURRENT_RUNS) {
     // Global busy: another session's run holds the single browser slot.
     // The session stays awaiting-approval so the user can approve again once
@@ -134,6 +168,7 @@ app.post('/api/run/:id', async (req, res) => {
   const liveEnv = {
       LIVE_FRAME_URL: `http://127.0.0.1:${PORT}/api/live/${s.id}/frame`,
       LIVE_ACTION_URL: `http://127.0.0.1:${PORT}/api/live/${s.id}/action`,
+      LIVE_EVIDENCE_URL: `http://127.0.0.1:${PORT}/api/live/${s.id}/evidence`,
       // Approved runs are what a person watches; pace them so the live view
       // shows each action instead of a blur. Unit tests and CI keep speed.
       LIVE_SLOWMO_MS: process.env.LIVE_SLOWMO_MS || '450',
@@ -142,6 +177,30 @@ app.post('/api/run/:id', async (req, res) => {
   s.runAgainst = versionOverride || s.plan.version;
   try {
     s.result = await runWithStabilityCheck(s.file, root, 1, { ...liveEnv, ...(versionOverride ? { DEMO_TARGET_VERSION: versionOverride } : {}) });
+    s.executedSignatures.push(runSignature);
+    // Evidence-based failure diagnosis: when a demo run fails, re-inspect the
+    // page it actually ran against and compare it with the page the plan was
+    // approved for. The explanation then names the concrete change, not just
+    // the runner's error text.
+    if (!s.result.passed && s.kind !== 'site') {
+      try {
+        const now = await inspectSignupPage(BASE_URL, s.runAgainst);
+        const expectedIds = [s.inspection.selectors.name, s.inspection.selectors.email, s.inspection.selectors.password, s.inspection.selectors.submit];
+        const actualIds = new Set([...now.fields.map((f) => f.testId).filter(Boolean), now.submit.testId, now.submit.id].filter(Boolean));
+        const missing = expectedIds.filter((id) => id && !actualIds.has(id));
+        const added = [...actualIds].filter((id) => !expectedIds.includes(id));
+        s.domDiff = { checkedAt: new Date().toISOString(), ranAgainst: s.runAgainst, missing, added };
+        if (missing.length || added.length) {
+          const parts = [];
+          if (missing.length) parts.push(`expected element(s) no longer present: ${missing.join(', ')}`);
+          if (added.length) parts.push(`page now offers: ${added.join(', ')}`);
+          const evidenceNote = ` Evidence re-check of the live page at ${s.domDiff.checkedAt}: ${parts.join('; ')}.`;
+          for (const r of s.result.runs) if (!r.passed) r.explanation = (r.explanation || '') + evidenceNote;
+        }
+      } catch {
+        // diagnosis is best-effort; the original explanation stands
+      }
+    }
     if (s.plan?.version === 'site' && s.result?.runs) {
       // honest plain-English wording for read-only external checks
       for (const r of s.result.runs) {
@@ -212,6 +271,18 @@ app.get('/api/live/:id/state', (req, res) => {
   });
 });
 
+// Run evidence posted by the test browser itself (aria snapshot of the page
+// it actually ran against). Same rules as frames: only while running.
+app.post('/api/live/:id/evidence', (req, res) => {
+  const s = sessions.get(req.params.id);
+  if (!s || s.status !== 'running') return res.status(409).json({ ok: false });
+  const kind = String(req.body?.kind || '');
+  const text = String(req.body?.text || '');
+  if (kind !== 'aria-snapshot' || !text || text.length > 9000) return res.status(400).json({ ok: false });
+  s.ariaSnapshot = { at: String(req.body?.at || new Date().toISOString()), text: text.slice(0, 8000) };
+  res.json({ ok: true });
+});
+
 app.get('/api/live/:id/frame', (req, res) => {
   const s = sessions.get(req.params.id);
   if (!s || !s.liveFrame) return res.status(204).end();
@@ -243,7 +314,10 @@ function publicView(s) {
       selectors: s.inspection.selectors,
       fieldsFound: s.inspection.fields,
       submitFound: s.inspection.submit,
+      ariaSnapshot: s.ariaSnapshot || null,
     },
+    domDiff: s.domDiff || null,
+    executedSignatures: s.executedSignatures || [],
     code: s.code,
     steps: s.steps || [],
     runAgainst: s.runAgainst || s.plan.version,
