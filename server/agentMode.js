@@ -9,8 +9,8 @@
 import { chromium } from 'playwright';
 import { inspectSignupPage } from './inspector.js';
 
-const MAX_STEPS = 8;
-const MAX_MS = 240000;
+const MAX_STEPS = 12;
+const MAX_MS = 300000;
 const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-flash-lite-latest';
 const VALID_ACTIONS = ['fill', 'click', 'check-visible', 'done', 'fail'];
@@ -58,6 +58,7 @@ function syntheticValue(testId, run) {
   const stamp = `${Date.now().toString(36)}${run}`;
   if (id.includes('email')) return `agent-${stamp}@example.test`;
   if (id.includes('pass')) return 'Passw0rd!agent';
+  if (id.includes('profile') && id.includes('name')) return `Agent Profile ${stamp}`;
   if (id.includes('name')) return `Agent User ${stamp}`;
   return `agent-${stamp}`;
 }
@@ -136,7 +137,7 @@ async function listInteractiveElements(page) {
   );
 }
 
-export async function runAgentLoop({ goal, version, baseUrl, live, decideFn = decide }) {
+export async function runAgentLoop({ goal, version, baseUrl, live, decideFn = decide, family = 'signup' }) {
   const startedAt = Date.now();
   const token = startedAt.toString(36);
   const history = [];
@@ -220,10 +221,41 @@ export async function runAgentLoop({ goal, version, baseUrl, live, decideFn = de
 
       if (action === 'done') {
         // The model claims success - verify against the real page, not its word.
-        const onDashboard = page.url().includes('/demo/dashboard');
-        const welcomeVisible = await page.getByTestId('welcome-heading').isVisible().catch(() => false);
         const aria2 = await page.locator('body').ariaSnapshot().catch(() => '');
         await postJson(live?.evidenceUrl, { kind: 'aria-snapshot', text: aria2.slice(0, 8000), at: new Date().toISOString() });
+        if (family === 'profile') {
+          // Profile task: the saved values must survive a fresh page load.
+          const nameFill = [...history].reverse().find((h) => h.ok && h.action === 'fill' && h.testId === 'profile-name-input');
+          const catClick = [...history].reverse().find((h) => h.ok && h.action === 'click' && /^category-radio-/.test(h.testId || ''));
+          if (!nameFill) {
+            return finish(false, 'The agent declared done on a profile task, but it never edited the display name - the claim was not accepted without a real edit.');
+          }
+          if (!catClick) {
+            return finish(false, 'The agent declared done on a profile task, but it never chose a favorite category - the claim was not accepted without a real edit.');
+          }
+          const expectedName = nameFill.value;
+          const expectedCategory = catClick.testId.replace('category-radio-', '');
+          const uid = new URL(page.url()).searchParams.get('uid');
+          if (!uid) {
+            return finish(false, 'The agent declared done on a profile task, but no saved account session exists to verify against.');
+          }
+          await page.goto(`${baseUrl}/demo/profile?uid=${uid}`, { waitUntil: 'domcontentloaded' });
+          const savedName = await page.getByTestId('profile-name-input').inputValue().catch(() => null);
+          const savedCategory = await page.locator(`#cat-${expectedCategory}`).isChecked().catch(() => false);
+          await page.goto(`${baseUrl}/demo/dashboard?uid=${uid}`, { waitUntil: 'domcontentloaded' });
+          const welcomeText = (await page.getByTestId('welcome-heading').textContent().catch(() => '')) || '';
+          const categoryText = ((await page.getByTestId('saved-category').textContent().catch(() => '')) || '').trim();
+          const aria3 = await page.locator('body').ariaSnapshot().catch(() => '');
+          await postJson(live?.evidenceUrl, { kind: 'aria-snapshot', text: aria3.slice(0, 8000), at: new Date().toISOString() });
+          const nameOk = savedName === expectedName && welcomeText.includes(expectedName);
+          const categoryOk = savedCategory && categoryText === expectedCategory;
+          if (nameOk && categoryOk) {
+            return finish(true, `Supported task complete in ${history.length} step(s): the agent created a fresh DemoShop account, edited the profile (display name "${expectedName}", category "${expectedCategory}"), and the saved values are verified on a fresh page load - the name on the dashboard and the stored profile record match what the agent entered.`);
+          }
+          return finish(false, `The agent declared done on a profile task, but the saved state did not verify after a fresh load (name match: ${nameOk ? 'yes' : 'no'}, category match: ${categoryOk ? 'yes' : 'no'}). The claim was not accepted without evidence.`);
+        }
+        const onDashboard = page.url().includes('/demo/dashboard');
+        const welcomeVisible = await page.getByTestId('welcome-heading').isVisible().catch(() => false);
         if (onDashboard || welcomeVisible) {
           return finish(true, `Supported task complete in ${history.length} step(s): the agent chose each action itself, created a fresh DemoShop account, and the dashboard welcome is verified on the real page.`);
         }
