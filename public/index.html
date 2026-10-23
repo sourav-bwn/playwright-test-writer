@@ -468,7 +468,7 @@ async function run(){
   res[cur]={status:pass?"pass":"fail",input:$("#flow").value.trim(),actual,ev:"Trace "+data.id+" · "+(siteMode?hostOf(s.plan.url):("DemoShop "+data.runAgainst))+" · "+proof+" · "+(r.stable?"stable across both runs":"flaky")};
   reportRuns.push({scenario:cur,passed:pass,stable:r.stable,durationSec:Number(secs),runs:r.runs.map(x=>({passed:x.passed,durationMs:x.durationMs})),ranAgainst:data.runAgainst,at:new Date().toISOString(),explanation:r.runs[0].explanation});
   window.__noBurst=r.runs.some(x=>x.shot); // keep real run evidence unobstructed
-  setOrb(pass?"done":"bad",pass?"Passed twice. Proof saved":"Failed, and explained");
+  setOrb(pass?"done":"bad",pass?(r.mode==="step-by-step"?"Agent passed. Proof saved":"Passed twice. Proof saved"):"Failed, and explained");
   liveDone(pass,r.runs[0].explanation);liveEvidence(r.runs,siteMode?s.plan.url:target);
   fin(cur);
  }catch(err){
