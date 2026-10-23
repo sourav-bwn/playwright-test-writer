@@ -72,6 +72,23 @@ export async function startLiveStream(page) {
 // acting right now, not just raw frames. When LIVE_ACTION_URL is not set
 // (local dev, unit tests) this is a complete no-op. A dropped report must
 // never fail a run, so every error is swallowed.
+// Evidence reporting: the generated test captures the page's real aria
+// snapshot at the end of the run and posts it here. Same rules as
+// reportAction: no-op off-server, never fails a run.
+export async function reportEvidence(kind, text) {
+  const target = process.env.LIVE_EVIDENCE_URL;
+  if (!target) return;
+  try {
+    await fetch(target, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind, text: String(text).slice(0, 8000), at: new Date().toISOString() }),
+    });
+  } catch {
+    // best-effort only
+  }
+}
+
 export async function reportAction(index, status) {
   const target = process.env.LIVE_ACTION_URL;
   if (!target) return;
