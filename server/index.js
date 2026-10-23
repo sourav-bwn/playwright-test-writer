@@ -231,15 +231,16 @@ app.post('/api/run/:id', async (req, res) => {
 // not handle. Uncertain goals are rejected with an honest scope message rather
 // than allowed to run and risk a false pass.
 const SIGNUP_INTENT = /\bsign([ -]?up| (me|us) up)\b|\bregister\b|\b(sign|create|make|open|start|join)\b.{0,40}\b(account|dashboard|membership)\b|\b(account|dashboard)\b.{0,40}\b(sign|create|make|open|register|join)\b/i;
-const UNSUPPORTED_TERMS = /\b(book|booking|flight|fly|hotel|ticket|movie|buy|purchase|order|cart|product|shop(?!.*account)|pay|payment|price|photo|picture|avatar|image|upload|edit|update|change|modify|delete|remove|cancel|reset|logout|log[ -]?out|log[ -]?in|login|search|browse|food|pizza|ride|cab|weather|marathon|race|event|concert|webinar|newsletter|subscription|class|course|gym|club|contest|giveaway|trip|email(?!\s*(address|id))|password\s*(change|reset)|profile\s*(photo|picture|edit|update|change))\b/i;
+const PROFILE_INTENT = /\b(edit|update|change|set|save)\b.{0,40}\b(profile|display[ -]?name|name|favorite|favourite|category|preferences?)\b|\b(profile|display[ -]?name|favorite|favourite|category)\b.{0,40}\b(edit|update|change|save)\b/i;
+const UNSUPPORTED_TERMS = /\b(book|booking|flight|fly|hotel|ticket|movie|buy|purchase|order|cart|product|shop(?!.*account)|pay|payment|price|photo|picture|avatar|image|upload|delete|remove|cancel|reset|logout|log[ -]?out|log[ -]?in|login|search|browse|food|pizza|ride|cab|weather|phone|marathon|race|event|concert|webinar|newsletter|subscription|class|course|gym|club|contest|giveaway|trip|email(?!\s*(address|id))|password\s*(change|reset)|profile\s*(photo|picture))\b/i;
 const NEGATION = /\b(don't|dont|do not|never|no\b|without|avoid|skip|not)\b/i;
-const SCOPE_ERROR = "This demo's step-by-step agent handles exactly one task: creating a fresh DemoShop account and verifying the dashboard welcome. Your goal is outside that scope (or asks for more than that one task), so nothing was run - try a signup request like 'create a fresh account and land on my dashboard'.";
-function goalInScope(message) {
+const SCOPE_ERROR = "This demo's step-by-step agent handles exactly two tasks on DemoShop: creating a fresh account and verifying the dashboard, and editing the profile (display name + favorite category) with the saved values verified after a reload. Your goal is outside that scope (or asks for more than those tasks), so nothing was run - try 'create a fresh account and land on my dashboard' or 'create an account and update my profile'.";
+function goalFamily(message) {
   const m = String(message || '').trim();
-  if (!SIGNUP_INTENT.test(m)) return false;      // must clearly ask for the signup task
-  if (NEGATION.test(m)) return false;            // negations make intent uncertain - reject conservatively
-  if (UNSUPPORTED_TERMS.test(m)) return false;   // any other action/object (incl. compound goals) is unhandled
-  return true;
+  if (!SIGNUP_INTENT.test(m) && !PROFILE_INTENT.test(m)) return null; // must clearly ask for a supported task
+  if (NEGATION.test(m)) return null;            // negations make intent uncertain - reject conservatively
+  if (UNSUPPORTED_TERMS.test(m)) return null;   // any other action/object (incl. compound goals) is unhandled
+  return PROFILE_INTENT.test(m) ? 'profile' : 'signup'; // profile goals get the stronger saved-state assertion
 }
 
 app.post('/api/agent/plan', async (req, res) => {
@@ -248,7 +249,8 @@ app.post('/api/agent/plan', async (req, res) => {
     const version = req.body?.version === 'v2' ? 'v2' : 'v1';
     if (!message) return res.status(400).json({ error: 'Describe the goal for the agent.' });
     if (findObviousPii(message)) return res.status(400).json({ error: PII_ERROR, code: 'pii-detected' });
-    if (!goalInScope(message)) return res.status(400).json({ error: SCOPE_ERROR, code: 'out-of-scope' });
+    const family = goalFamily(message);
+    if (!family) return res.status(400).json({ error: SCOPE_ERROR, code: 'out-of-scope' });
     if (!agentAvailable()) {
       return res.status(503).json({ error: 'Step-by-step agent mode needs its AI decision model, which is not configured on this server right now. The standard test flow still works.', code: 'agent-unavailable' });
     }
@@ -260,6 +262,7 @@ app.post('/api/agent/plan', async (req, res) => {
       message,
       plan: {
         goal: message,
+        taskFamily: family,
         version,
         flow: 'step-by-step-agent',
         mode: 'step-by-step',
@@ -316,7 +319,7 @@ app.post('/api/agent/run/:id', async (req, res) => {
     slowmoMs: Number(process.env.LIVE_SLOWMO_MS || '450'),
   };
   try {
-    const outcome = await runAgentLoop({ goal: s.message, version: s.plan.version, baseUrl: BASE_URL, live });
+    const outcome = await runAgentLoop({ goal: s.message, version: s.plan.version, baseUrl: BASE_URL, live, family: s.plan.taskFamily || 'signup' });
     s.executedSignatures.push(runSignature);
     s.steps = outcome.steps;
     s.result = {
