@@ -54,7 +54,7 @@ export function generateTest({ plan, inspection }) {
   lines.push(`// Goal: ${plan.goal}`);
   lines.push(`// Source inspected: ${inspection.source.url} at ${inspection.source.retrievedAt}`);
   lines.push(`import { test, expect } from '@playwright/test';`);
-  lines.push(`import { startLiveStream, reportAction } from '../server/liveStream.js';`);
+  lines.push(`import { startLiveStream, reportAction, reportEvidence } from '../server/liveStream.js';`);
   lines.push(``);
   lines.push(`test('${escapeSq(plan.goal)}', async ({ page, request }, testInfo) => {`);
   lines.push(`  // Stream the real browser screen to the page while this test acts.`);
@@ -122,6 +122,9 @@ export function generateTest({ plan, inspection }) {
   lines.push(`  } finally {`);
   lines.push(`    // Freeze the live feed at the final state, then capture evidence.`);
   lines.push(`    if (stopLive) await stopLive();`);
+  lines.push(`    // Accessibility evidence: the page's real aria tree at the end of the run.`);
+  lines.push(`    const aria = await page.locator('body').ariaSnapshot().catch(() => null);`);
+  lines.push(`    if (aria) await reportEvidence('aria-snapshot', aria);`);
   lines.push(`    // Real run evidence: capture what the runner's browser actually showed`);
   lines.push(`    // at the end of this test (pass or fail) and attach it to the report.`);
   lines.push(`    const shot = await page.screenshot().catch(() => null);`);
