@@ -136,7 +136,7 @@ async function listInteractiveElements(page) {
   );
 }
 
-export async function runAgentLoop({ goal, version, baseUrl, live }) {
+export async function runAgentLoop({ goal, version, baseUrl, live, decideFn = decide }) {
   const startedAt = Date.now();
   const token = startedAt.toString(36);
   const history = [];
@@ -166,7 +166,7 @@ export async function runAgentLoop({ goal, version, baseUrl, live }) {
       }
       const aria = await page.locator('body').ariaSnapshot();
       const elements = await listInteractiveElements(page);
-      const { decision, model } = await decide(buildPrompt({ goal, aria, elements, history, guardNote, token }));
+      const { decision, model } = await decideFn(buildPrompt({ goal, aria, elements, history, guardNote, token }));
       models.add(model);
       const action = String(decision?.action || '').trim();
       const testId = decision?.testId ? String(decision.testId).trim() : null;
