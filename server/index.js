@@ -9,6 +9,7 @@ import { inspectSignupPage } from './inspector.js';
 import { generateTest, signupSteps } from './generator.js';
 import { runWithStabilityCheck } from './runner.js';
 import { createSitePlan, generateSiteTest, siteSteps } from './sitePlan.js';
+import { runAgentLoop, agentAvailable, AGENT_LIMITS } from './agentMode.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -217,6 +218,102 @@ app.post('/api/run/:id', async (req, res) => {
   res.json(publicView(s));
 });
 
+
+// Step-by-step agent mode: the agent observes the live page structure and
+// chooses one action at a time (bounded, validated, DemoShop only). Same
+// approval gate, capacity gate and idempotency lock as the generated-test
+// flow. Plan first; nothing runs until the human approves.
+app.post('/api/agent/plan', async (req, res) => {
+  try {
+    const message = String(req.body?.message || '').trim();
+    const version = req.body?.version === 'v2' ? 'v2' : 'v1';
+    if (!message) return res.status(400).json({ error: 'Describe the goal for the agent.' });
+    if (findObviousPii(message)) return res.status(400).json({ error: PII_ERROR, code: 'pii-detected' });
+    if (!agentAvailable()) {
+      return res.status(503).json({ error: 'Step-by-step agent mode needs its AI decision model, which is not configured on this server right now. The standard test flow still works.', code: 'agent-unavailable' });
+    }
+    const inspection = await inspectSignupPage(BASE_URL, version);
+    const id = `run-${nextId++}`;
+    sessions.set(id, {
+      id,
+      kind: 'agent',
+      message,
+      plan: {
+        goal: message,
+        version,
+        flow: 'step-by-step-agent',
+        mode: 'step-by-step',
+        allowedActions: AGENT_LIMITS.actions,
+        maxSteps: AGENT_LIMITS.maxSteps,
+        maxSeconds: AGENT_LIMITS.maxSeconds,
+        boundary: 'DemoShop only - the run aborts if the browser leaves the demo app',
+      },
+      inspection: { source: inspection.source, selectors: inspection.selectors, fields: inspection.fields, submit: inspection.submit },
+      llm: { provider: 'gemini', note: 'Step-by-step mode: the model chooses each action live from the page structure; deterministic safety checks validate every proposed action before it executes.' },
+      status: 'awaiting-approval',
+      createdAt: new Date().toISOString(),
+    });
+    res.json(publicView(sessions.get(id)));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/agent/run/:id', async (req, res) => {
+  const s = sessions.get(req.params.id);
+  if (!s || s.kind !== 'agent') return res.status(404).json({ error: 'Unknown agent session.' });
+  if (s.status === 'running') return res.status(409).json({ error: 'Already running.' });
+  const runSignature = crypto
+    .createHash('sha256')
+    .update('agent|' + s.message + '|' + s.plan.version)
+    .digest('hex')
+    .slice(0, 16);
+  s.executedSignatures = s.executedSignatures || [];
+  if (s.executedSignatures.includes(runSignature)) {
+    return res.status(409).json({
+      error: 'This approved request was already executed; retrying it does not run it twice. Start a new plan to run the flow again.',
+      code: 'already-executed',
+      runSignature,
+      result: s.result,
+    });
+  }
+  if (activeRuns >= MAX_CONCURRENT_RUNS) {
+    return res.status(409).json({
+      error: 'Another run is in progress right now. This demo runs one browser job at a time (free tier); wait for it to finish, then approve again.',
+      code: 'capacity',
+    });
+  }
+  activeRuns++;
+  s.status = 'running';
+  s.approvedAt = new Date().toISOString();
+  s.liveFrame = null;
+  s.liveFrames = [];
+  s.liveActions = {};
+  const live = {
+    frameUrl: `http://127.0.0.1:${PORT}/api/live/${s.id}/frame`,
+    actionUrl: `http://127.0.0.1:${PORT}/api/live/${s.id}/action`,
+    evidenceUrl: `http://127.0.0.1:${PORT}/api/live/${s.id}/evidence`,
+    slowmoMs: Number(process.env.LIVE_SLOWMO_MS || '450'),
+  };
+  try {
+    const outcome = await runAgentLoop({ goal: s.message, version: s.plan.version, baseUrl: BASE_URL, live });
+    s.executedSignatures.push(runSignature);
+    s.steps = outcome.steps;
+    s.result = {
+      passed: outcome.passed,
+      stable: true, // single exploratory run; no rerun pair to compare
+      mode: 'step-by-step',
+      runs: [{ passed: outcome.passed, explanation: outcome.explanation, durationMs: outcome.durationMs, steps: outcome.steps, modelsUsed: outcome.modelsUsed }],
+    };
+    s.status = 'done';
+  } catch (err) {
+    s.status = 'error';
+    s.result = { error: err.message };
+  } finally {
+    activeRuns--;
+  }
+  res.json(publicView(s));
+});
 
 // Live view: the approved test's own browser streams its real screen here,
 // one jpeg frame at a time, while it navigates, types and clicks. Only the
