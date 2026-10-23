@@ -220,7 +220,7 @@ export function generateSiteTest({ url, goal, checks }) {
   lines.push(`// This test never fills, clicks, submits or changes anything on the site.`);
   lines.push(`import { test, expect } from '@playwright/test';`);
   lines.push(`import { assertPublicUrl } from '../server/webInspect.js';`);
-lines.push(`import { startLiveStream, reportAction } from '../server/liveStream.js';`);
+lines.push(`import { startLiveStream, reportAction, reportEvidence } from '../server/liveStream.js';`);
   lines.push(``);
   lines.push(`const ALLOW_PRIVATE = process.env.INSPECT_ALLOW_PRIVATE === '1';`);
   lines.push(``);
@@ -275,6 +275,8 @@ lines.push(`  try {`);
   lines.push(`    throw err;`);
   lines.push(`  } finally {`);
 lines.push(`    if (stopLive) await stopLive();`);
+lines.push(`    const aria = await page.locator('body').ariaSnapshot().catch(() => null);`);
+lines.push(`    if (aria) await reportEvidence('aria-snapshot', aria);`);
 lines.push(`    const shot = await page.screenshot().catch(() => null);`);
   lines.push(`    if (shot) await testInfo.attach('final-page-state', { body: shot, contentType: 'image/png' });`);
   lines.push(`  }`);
