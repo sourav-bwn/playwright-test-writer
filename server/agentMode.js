@@ -82,6 +82,7 @@ RULES:
 - "fill" and "click" and "check-visible" need a testId copied EXACTLY from the INTERACTIVE ELEMENTS list.
 - Never invent or reuse real personal data. For fill values use obviously synthetic data on reserved domains only (e.g. someone@example.test); if unsure, omit "value" and safe synthetic data will be used.
 - Say "done" only when the goal is visibly achieved in the snapshot. Say "fail" when the goal cannot be achieved.
+- When the goal includes updating the profile: once a "profile saved" confirmation or your saved values appear in the snapshot, the task IS complete - say "done" immediately instead of navigating again.
 - Never try to leave this site, open OTP/CAPTCHA flows, or submit real data.
 - Uniqueness token for this run: ${token}. Include it in any email or name you invent (e.g. user-${token}@example.test) so repeated runs never collide.
 
