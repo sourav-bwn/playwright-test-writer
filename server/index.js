@@ -223,12 +223,32 @@ app.post('/api/run/:id', async (req, res) => {
 // chooses one action at a time (bounded, validated, DemoShop only). Same
 // approval gate, capacity gate and idempotency lock as the generated-test
 // flow. Plan first; nothing runs until the human approves.
+// Scope gate for step-by-step agent mode: the demo's agent handles ONE job -
+// creating a DemoShop account and verifying the dashboard. The final success
+// assertion is hardwired to that outcome, so anything beyond it could false-pass.
+// Conservative by design: a goal passes only when it clearly asks for the
+// supported signup task AND names no other action, object or negation we do
+// not handle. Uncertain goals are rejected with an honest scope message rather
+// than allowed to run and risk a false pass.
+const SIGNUP_INTENT = /\bsign([ -]?up| (me|us) up)\b|\bregister\b|\b(sign|create|make|open|start|join)\b.{0,40}\b(account|dashboard|membership)\b|\b(account|dashboard)\b.{0,40}\b(sign|create|make|open|register|join)\b/i;
+const UNSUPPORTED_TERMS = /\b(book|booking|flight|fly|hotel|ticket|movie|buy|purchase|order|cart|product|shop(?!.*account)|pay|payment|price|photo|picture|avatar|image|upload|edit|update|change|modify|delete|remove|cancel|reset|logout|log[ -]?out|log[ -]?in|login|search|browse|food|pizza|ride|cab|weather|marathon|race|event|concert|webinar|newsletter|subscription|class|course|gym|club|contest|giveaway|trip|email(?!\s*(address|id))|password\s*(change|reset)|profile\s*(photo|picture|edit|update|change))\b/i;
+const NEGATION = /\b(don't|dont|do not|never|no\b|without|avoid|skip|not)\b/i;
+const SCOPE_ERROR = "This demo's step-by-step agent handles exactly one task: creating a fresh DemoShop account and verifying the dashboard welcome. Your goal is outside that scope (or asks for more than that one task), so nothing was run - try a signup request like 'create a fresh account and land on my dashboard'.";
+function goalInScope(message) {
+  const m = String(message || '').trim();
+  if (!SIGNUP_INTENT.test(m)) return false;      // must clearly ask for the signup task
+  if (NEGATION.test(m)) return false;            // negations make intent uncertain - reject conservatively
+  if (UNSUPPORTED_TERMS.test(m)) return false;   // any other action/object (incl. compound goals) is unhandled
+  return true;
+}
+
 app.post('/api/agent/plan', async (req, res) => {
   try {
     const message = String(req.body?.message || '').trim();
     const version = req.body?.version === 'v2' ? 'v2' : 'v1';
     if (!message) return res.status(400).json({ error: 'Describe the goal for the agent.' });
     if (findObviousPii(message)) return res.status(400).json({ error: PII_ERROR, code: 'pii-detected' });
+    if (!goalInScope(message)) return res.status(400).json({ error: SCOPE_ERROR, code: 'out-of-scope' });
     if (!agentAvailable()) {
       return res.status(503).json({ error: 'Step-by-step agent mode needs its AI decision model, which is not configured on this server right now. The standard test flow still works.', code: 'agent-unavailable' });
     }
