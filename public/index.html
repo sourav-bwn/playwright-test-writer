@@ -703,6 +703,7 @@ function tk(){g.clearRect(0,0,fx.width,fx.height);Q=Q.filter(p=>p.l>0);for(const
  const aN=[$('#tpA0'),$('#tpA1'),$('#tpA2'),$('#tpA3'),$('#tpA4')];
  const aL=[...ag.querySelectorAll(':scope > .tp-link')];
  const loop=$('#tpLoop'),tag=$('#tpLoopTag');
+ let scrolledRun=false;
  function setN(el,st){if(!el)return;el.classList.remove('done','act','wait','bad');if(st)el.classList.add(st);}
  function stepStates(){return [...document.querySelectorAll('#liveStepList .live-step')].map(e=>e.classList.contains('done')?'done':(e.classList.contains('bad')||e.classList.contains('failed'))?'bad':e.classList.contains('active')?'act':'');}
  function mode(){const c=document.querySelector('.mchip.on');return c?c.dataset.mode:'test';}
@@ -716,6 +717,8 @@ function tk(){g.clearRect(0,0,fx.width,fx.height);Q=Q.filter(p=>p.l>0);for(const
   std.style.display=m==='agent'?'none':'flex';
   ag.style.display=m==='agent'?'flex':'none';
   const st=stepStates();while(st.length<6)st.push('');
+  if(st.every(x=>!x))scrolledRun=false;
+  if(st[4]==='act'&&!scrolledRun){scrolledRun=true;const sec=$('#live-run');if(sec)sec.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});}
   if(m!=='agent'){
    const v=(st[4]==='bad'||st[5]==='bad')?'bad':(st[4]==='act'||st[5]==='act')?'act':(st[4]==='done'&&st[5]==='done')?'done':(st[4]==='done'||st[5]==='done')?'act':'';
    const map=[st[0],st[1],st[2],st[3],v];
