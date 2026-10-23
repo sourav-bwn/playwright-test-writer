@@ -704,7 +704,7 @@ function tk(){g.clearRect(0,0,fx.width,fx.height);Q=Q.filter(p=>p.l>0);for(const
  const aL=[...ag.querySelectorAll(':scope > .tp-link')];
  const loop=$('#tpLoop'),tag=$('#tpLoopTag');
  function setN(el,st){if(!el)return;el.classList.remove('done','act','wait','bad');if(st)el.classList.add(st);}
- function stepStates(){return [...document.querySelectorAll('#liveStepList .live-step')].map(e=>e.classList.contains('done')?'done':e.classList.contains('failed')?'bad':e.classList.contains('active')?'act':'');}
+ function stepStates(){return [...document.querySelectorAll('#liveStepList .live-step')].map(e=>e.classList.contains('done')?'done':(e.classList.contains('bad')||e.classList.contains('failed'))?'bad':e.classList.contains('active')?'act':'');}
  function mode(){const c=document.querySelector('.mchip.on');return c?c.dataset.mode:'test';}
  function approvalUp(){const g=$('#liveApproval');return g&&!g.hidden;}
  function paintLinks(nodes,links){
