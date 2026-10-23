@@ -225,7 +225,7 @@ export async function runAgentLoop({ goal, version, baseUrl, live, decideFn = de
         const aria2 = await page.locator('body').ariaSnapshot().catch(() => '');
         await postJson(live?.evidenceUrl, { kind: 'aria-snapshot', text: aria2.slice(0, 8000), at: new Date().toISOString() });
         if (onDashboard || welcomeVisible) {
-          return finish(true, `Goal reached in ${history.length} step(s): the agent chose each action itself and the dashboard welcome is verified on the real page.`);
+          return finish(true, `Supported task complete in ${history.length} step(s): the agent chose each action itself, created a fresh DemoShop account, and the dashboard welcome is verified on the real page.`);
         }
         return finish(false, 'The agent declared done, but the dashboard welcome is NOT visible on the real page - the claim was not accepted without evidence.');
       }
