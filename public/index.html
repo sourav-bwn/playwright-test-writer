@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TestPilot AI · Say it in English. Get a tested result.</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><rect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%236C6FF2%27/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+ --shell:#1B1E3D;--topbar:#14162E;--border:#3A3F78;--violet:#6C6FF2;--violet2:#8F94FF;
+ --text:#E8E9F5;--muted:#9AA0C3;--muted2:#8F94C8;--mint:#3DDC97;--card:#232650;--card2:#262A55;
+ --bad:#F2647C;--warn:#F5C15D;--code:#14162E;color-scheme:dark;box-sizing:border-box}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:64px}
+body{margin:0;background:radial-gradient(ellipse at 80% -10%,#2A2F63 0,transparent 45%),var(--shell);color:var(--text);font:400 15px/1.6 'Manrope',system-ui,sans-serif;min-height:100vh}
+.mono{font-family:'JetBrains Mono',monospace}
+button{font-family:inherit}
+
+/* ---------- topbar (approved workspace chrome) ---------- */
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--topbar);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40}
+.hamb{color:var(--muted);padding:4px 8px;display:flex}
+.bc{display:flex;align-items:center;gap:7px;background:var(--card2);border:1px solid #3D4290;border-radius:8px;padding:4px 12px;font-size:13px;font-weight:600;box-shadow:0 0 14px rgba(108,111,242,.18);white-space:nowrap}
+.bc.plain{background:transparent;border-color:transparent;box-shadow:none;color:var(--muted2);font-weight:500}
+.sep{color:#5C6280}
+.free{background:var(--violet);color:#fff;font-size:10px;font-weight:800;border-radius:10px;padding:2px 8px;box-shadow:0 0 12px rgba(108,111,242,.75)}
+.ticons{margin-left:auto;display:flex;gap:14px;color:var(--muted);align-items:center}
+.ticons .tagpill{font-size:11.5px;color:var(--muted);border:1px solid var(--border);padding:5px 12px;border-radius:99px;background:rgba(255,255,255,.03)}
+@media(max-width:900px){.ticons .tagpill{display:none}.bc.hide-m{display:none}.sep.hide-m{display:none}}
+
+/* ---------- case bar ---------- */
+.casebar{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#4A3F9F,#3A2F7E);padding:10px 16px;border-bottom:1px solid #5A4FC0;box-shadow:0 4px 24px rgba(108,80,242,.35)}
+.casebar .t{font-weight:700;font-size:14px}
+.casebar .s{font-size:11px;color:#CFC6F5}
+.casebar .x{margin-left:auto;color:#B9AEE8;display:flex;cursor:pointer;background:none;border:0;padding:4px}
+.casebar .x:hover{color:#fff}
+
+/* ---------- workspace grid ---------- */
+.ws{display:grid;grid-template-columns:52px minmax(280px,320px) 1fr;min-height:calc(100vh - 96px)}
+.rail{background:var(--topbar);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding-top:16px;gap:6px}
+.rbtn{display:flex;flex-direction:column;align-items:center;gap:3px;color:#5C6280;margin-bottom:14px;cursor:pointer;background:none;border:0;padding:4px}
+.rbtn:hover{color:var(--muted)}
+.rbtn.on{color:var(--violet2);text-shadow:0 0 10px rgba(143,148,255,.8)}
+.rbtn svg{width:17px;height:17px}
+.rlab{font-size:8px}
+.left{border-right:1px solid var(--border);padding:12px;overflow-y:auto}
+.right{padding:14px 18px;overflow:hidden;min-width:0}
+@media(max-width:900px){
+ html{scroll-padding-top:120px}
+ .ws{grid-template-columns:1fr;grid-template-rows:auto auto auto}
+ .rail{flex-direction:row;justify-content:center;gap:26px;padding:10px 0;border-right:0;border-bottom:1px solid var(--border)}
+ .rbtn{margin-bottom:0}
+ .left{border-right:0;border-bottom:1px solid var(--border)}
+}
+
+/* ---------- left column ---------- */
+.lrow{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.iconbtn{color:#5C6280;display:flex;background:none;border:0;cursor:pointer;padding:4px}
+.iconbtn:hover{color:var(--bad)}
+.iconbtn svg{width:15px;height:15px}
+.saverun{margin-left:auto;background:#EDEFF7;color:#252849;font-weight:700;font-size:12px;border-radius:8px;padding:7px 14px;box-shadow:0 0 14px rgba(237,239,247,.35);border:0;cursor:pointer;transition:.2s}
+.saverun:hover:not(:disabled){box-shadow:0 0 22px rgba(237,239,247,.55);transform:translateY(-1px)}
+.saverun:disabled{opacity:.45;cursor:not-allowed}
+.dep{background:var(--card2);border:1px solid #3D4290;border-radius:10px;padding:9px 12px;font-size:12px;color:#C9CDE0;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.dep .r{margin-left:auto;font-size:11px;color:var(--muted2)}
+.dep .r.ok{color:var(--mint);text-shadow:0 0 8px rgba(61,220,151,.7)}
+.dep .r.wait{color:var(--warn);text-shadow:0 0 8px rgba(245,193,93,.7)}
+.prompt{background:linear-gradient(160deg,#5A4FD0,#3D2F9E);border:1px solid #8F7FF0;border-radius:12px;padding:12px 14px;margin-bottom:12px;box-shadow:0 0 28px rgba(130,110,255,.55),inset 0 0 24px rgba(255,255,255,.06)}
+.prompt .h{color:#E3DCFF;font-size:12px;font-weight:700;margin-bottom:8px;text-shadow:0 0 10px rgba(200,190,255,.8)}
+.prompt ol{margin:0 0 0 18px;font-size:12px;line-height:1.55;color:#F2F0FF}
+.regen{width:100%;margin-top:10px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font-size:12px;font-weight:600;padding:7px;cursor:pointer;box-shadow:0 0 12px rgba(180,160,255,.35)}
+.regen:hover{background:rgba(255,255,255,.24)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{cursor:pointer;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.10);color:#EDEAFF;padding:5px 10px;border-radius:99px;font:600 11px 'Manrope',sans-serif;transition:.2s}
+.chip:hover{background:rgba(255,255,255,.2)}
+.chip.on{color:#1B1E3D;background:#EDEFF7;border-color:#EDEFF7;box-shadow:0 0 12px rgba(237,239,247,.4)}
+.plabel2{display:block;font-size:11px;font-weight:600;color:#E3DCFF;margin:8px 0 4px}
+.plabel2 small{color:#CFC6F5;font-weight:400}
+textarea,input,select{width:100%;background:rgba(20,22,46,.72);border:1px solid rgba(255,255,255,.22);color:var(--text);border-radius:10px;padding:9px 11px;font:400 13px 'Manrope',sans-serif;outline:none;transition:.25s;resize:vertical}
+textarea:focus,input:focus,select:focus{border-color:var(--violet2);box-shadow:0 0 0 3px rgba(143,148,255,.25)}
+select option{background:var(--card);color:var(--text)}
+.err{color:#FFB3C0;font-size:12px;min-height:18px;margin-top:6px;font-weight:600}
+.judge-bar{margin-top:10px;padding:8px 10px;border-radius:10px;border:1px dashed rgba(255,255,255,.25);background:rgba(255,255,255,.05)}
+.judge-bar small{display:block;font:600 9.5px 'JetBrains Mono',monospace;color:#CFC6F5;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+.judge-btns{display:flex;flex-wrap:wrap;gap:5px}
+.jbtn{cursor:pointer;border:1px solid rgba(255,255,255,.22);background:rgba(20,22,46,.8);color:#DCD9F5;padding:5px 9px;border-radius:7px;font:600 10.5px 'Manrope',sans-serif;transition:.2s}
+.jbtn:hover{border-color:#B9AEE8;color:#fff;transform:translateY(-1px)}
+#siteNote{font-size:11px;color:#CFC6F5;margin-top:6px;line-height:1.5}
+
+
+/* clarity pass: single empty state, column separation, collapsed judge tools */
+#strip:has(>.emp){display:none}
+.left{background:rgba(13,15,34,.55)}
+details.judge{border:1px dashed rgba(255,255,255,.18);border-radius:10px;padding:8px 12px;margin-bottom:12px;background:rgba(255,255,255,.03)}
+details.judge summary{cursor:pointer;font:600 10.5px 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:#8F94C8;list-style:none}
+details.judge summary::-webkit-details-marker{display:none}
+details.judge summary:hover{color:#CFC6F5}
+details.judge .judge-btns{margin-top:9px}
+@media(max-width:900px){
+ .ws.plan-on .left{display:contents}
+ .ws.plan-on .rail{order:0}
+ .ws.plan-on .right{order:1}
+ .ws.plan-on .gate{order:2;margin:12px}
+ .ws.plan-on .prompt{order:3;margin:0 12px 12px}
+ .ws.plan-on #stepList{order:4;padding:0 12px}
+ .ws.plan-on .lrow{order:5;padding:0 12px}
+ .ws.plan-on .dep{order:6;margin:0 12px 12px}
+ .ws.plan-on details.judge{order:7;margin:0 12px 12px}
+}
+
+/* approval gate */
+.gate{display:none;margin:0 0 12px;padding:13px;border-radius:12px;border:1px solid var(--warn);background:rgba(245,193,93,.10)}
+.gate b{display:block;margin-bottom:4px;font-size:13px}
+.gate p{margin:0 0 10px;color:#E8D9B8;font-size:12px}
+.gate-meta{font:10.5px 'JetBrains Mono',monospace;color:var(--mint);background:rgba(20,22,46,.8);padding:7px 9px;border-radius:8px;margin-bottom:10px;border:1px solid var(--border)}
+.gbtn{padding:8px 14px;font-size:12px;font-weight:700;border-radius:8px;border:0;cursor:pointer;margin:0 6px 6px 0;background:linear-gradient(120deg,var(--mint),#2BA876);color:#06231A;box-shadow:0 0 14px rgba(61,220,151,.35)}
+.gbtn:hover:not(:disabled){transform:translateY(-1px)}
+.gbtn.ghost{background:transparent;color:var(--text);border:1px solid var(--border);box-shadow:none}
+
+/* step cards (real plan actions) */
+.istep{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:6px;font-size:11.5px;color:#C9CDE0;transition:box-shadow .3s,background .3s}
+.istep .drag{color:#4A4F85;font-size:10px;letter-spacing:1px}
+.istep .tx{min-width:0}
+.istep .tx .kind{font-size:10px;color:#7A7FB0;display:block}
+.istep .tx b{font-weight:700;color:#EDEFF7;font-size:11.5px;word-break:break-word}
+.istep .st-ic{margin-left:auto;flex:none;width:16px;text-align:center}
+.istep.done .st-ic{color:var(--mint);text-shadow:0 0 9px rgba(61,220,151,.9)}
+.istep.cur{background:#EDEFF7;color:#1B1E3D;border-color:#EDEFF7;box-shadow:0 0 22px rgba(180,200,255,.55),0 0 8px rgba(61,220,151,.4)}
+.istep.cur .tx b,.istep.cur .tx .kind{color:#1B1E3D}
+.istep.cur .st-ic{color:#0E9E6A;font-weight:800}
+.istep.failed{background:rgba(242,100,124,.14);border-color:var(--bad)}
+.istep.failed .st-ic{color:var(--bad)}
+.istep.failed .tx b{color:#FFD3DB}
+
+/* ---------- right column ---------- */
+.slab{font-size:12px;color:var(--muted2);margin-bottom:4px;font-family:'JetBrains Mono',monospace}
+.atitle{font-size:21px;font-weight:700;margin-bottom:12px;text-shadow:0 0 18px rgba(143,148,255,.35);min-height:28px}
+.plabel{font-size:14px;color:#C9CDE0;margin-bottom:8px}
+.pwin{background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 0 34px rgba(108,111,242,.4),0 8px 30px rgba(0,0,0,.5);position:relative}
+.pwin .ph{height:250px;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 0,#2A2F63,#14162E 75%);color:var(--muted2);font-size:12.5px;text-align:center;padding:20px 40px;line-height:1.7}
+.pwin img.live{width:100%;height:420px;object-fit:cover;object-position:top;display:block;background:#000}
+.pwin iframe{width:100%;height:420px;border:0;display:block;background:#fff}
+.pwin .evshot{padding:10px;background:#0B0E17}
+.pwin .evshot img{width:100%;border-radius:8px;border:1px solid #ffffff22;background:#fff;display:block}
+.pwin .evshot figcaption{color:#C3C9DE;font:10px 'JetBrains Mono',monospace;margin:6px 0 2px}
+.strip{display:flex;gap:8px;padding:10px;background:var(--topbar);border-radius:0 0 10px 10px;margin-top:-4px;margin-bottom:14px;overflow-x:auto}
+.strip img{width:120px;height:54px;border-radius:6px;border:2px solid transparent;object-fit:cover;object-position:top;flex:none;background:#000}
+.strip img.sel{border-color:var(--violet2);box-shadow:0 0 12px rgba(143,148,255,.7)}
+.strip .emp{color:#5C6280;font:10px 'JetBrains Mono',monospace;display:grid;place-items:center;width:120px;height:54px;flex:none}
+.llab2{font-size:14px;font-weight:700;margin-bottom:2px}
+.llab2 span{font-size:11px;color:var(--muted2)}
+.lsub{font-size:12px;color:var(--muted2);margin-bottom:6px}
+.codebox{background:var(--code);border:1px solid #2E3A5C;border-radius:10px;padding:12px 16px;font-family:'JetBrains Mono',monospace;font-size:13.5px;color:var(--mint);text-shadow:0 0 10px rgba(61,220,151,.65);box-shadow:0 0 18px rgba(61,220,151,.15);word-break:break-all}
+.note{margin-top:8px;font-size:10px;color:#5C6280;line-height:1.5}
+@media(max-width:900px){.pwin img.live,.pwin iframe{height:300px}.pwin .ph{height:220px}.atitle{font-size:17px}}
+
+/* ---------- sections below the workspace ---------- */
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+.sec{margin-top:56px}
+.sec h2{font-size:clamp(24px,3.4vw,34px);letter-spacing:-.02em;margin:0 0 8px;font-weight:800}
+.sec>p{color:var(--muted);margin:0 0 22px;max-width:660px;font-size:14.5px}
+.card{background:rgba(255,255,255,.035);border:1px solid var(--border);border-radius:18px;padding:22px;backdrop-filter:blur(14px)}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.g4 .card h3{margin:0 0 6px;font-size:16px}
+.g4 .card p{margin:0;color:var(--muted);font-size:13.5px}
+.num{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font:500 13px 'JetBrains Mono',monospace;background:linear-gradient(135deg,rgba(108,111,242,.35),rgba(61,220,151,.22));margin-bottom:12px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.tb{cursor:pointer;background:none;border:0;color:var(--muted);padding:9px 14px;font:600 13px 'Manrope',sans-serif;border-bottom:2px solid transparent;transition:.25s}
+.tb.on{color:var(--text);border-color:var(--mint)}
+.pane{display:none}.pane.on{display:block}
+pre{margin:0;position:relative;overflow:auto;max-height:340px;background:var(--code);border:1px solid var(--border);border-radius:14px;padding:14px;font:400 12.5px/1.7 'JetBrains Mono',monospace}
+pre div{white-space:pre-wrap}
+.k{color:var(--violet2)}.t{color:var(--muted)}.lo{color:var(--mint)}.lb{color:var(--bad)}.lw{color:var(--warn)}
+.plain{margin-top:12px;padding:14px 16px;border-radius:14px;background:rgba(108,111,242,.09);border:1px solid var(--border);font-size:13.5px}
+.plain b{display:block;margin-bottom:4px;font-size:12px;color:var(--mint)}
+.plain div{padding:2px 0}
+.ev{padding:11px 0;border-bottom:1px solid var(--border);display:grid;gap:4px}
+.ev code{font:500 12px 'JetBrains Mono',monospace;color:var(--mint);word-break:break-all}
+.ev small{color:var(--muted);font:11px 'JetBrains Mono',monospace}
+
+/* smart report (adapted) */
+.report-shell{padding:0;overflow:hidden;background:linear-gradient(145deg,#15173A,#10122B);border-color:var(--border);box-shadow:0 18px 60px rgba(0,0,0,.4)}
+.report-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 22px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.report-brand{display:flex;align-items:center;gap:12px}
+.report-mark{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:18px;color:#06151A;background:linear-gradient(140deg,#3DDC97,#6C6FF2);box-shadow:0 0 26px rgba(61,220,151,.25)}
+.report-brand h3{margin:0;font-size:16px}
+.report-brand small{display:block;color:var(--muted);font:11px 'JetBrains Mono',monospace;margin-top:2px}
+.report-actions{display:flex;align-items:center;gap:10px}
+.report-time{font:10.5px 'JetBrains Mono',monospace;color:var(--muted);border:1px solid var(--border);background:rgba(255,255,255,.03);padding:8px 11px;border-radius:9px}
+.report-export{border:1px solid var(--border);background:rgba(255,255,255,.05);color:#D9DEEF;border-radius:9px;padding:8px 11px;font:600 10.5px 'JetBrains Mono',monospace;cursor:pointer;transition:.2s}
+.report-export:hover{border-color:var(--mint);color:var(--mint)}
+.report-body{padding:20px 22px}
+.report-metrics{display:grid;grid-template-columns:116px repeat(auto-fit,minmax(90px,1fr));gap:11px;align-items:center;margin-bottom:18px}
+.pass-ring-wrap{text-align:center;color:#A8AEC1;font-size:11px}
+.pass-ring{width:88px;height:88px;margin:0 auto 8px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#12EF98 0 80%,#26303A 80% 100%);position:relative}
+.pass-ring::before{content:"";position:absolute;inset:7px;border-radius:50%;background:#14163A}
+.pass-ring strong{position:relative;z-index:1;color:#32F5A9;font:700 19px 'JetBrains Mono',monospace}
+.metric-tile{position:relative;min-height:82px;padding:13px 9px 9px;text-align:center;border:1px solid var(--border);border-radius:13px;background:linear-gradient(150deg,#1C1D3A,#15162E);overflow:hidden}
+.metric-tile::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--metric,#6C6FF2)}
+.metric-tile strong{display:block;font:700 22px 'JetBrains Mono',monospace;color:var(--metric,#E6E8F2);line-height:1.2;margin:4px 0 5px}
+.metric-tile span{font:9.5px 'JetBrains Mono',monospace;letter-spacing:.08em;color:#A2A6BA;text-transform:uppercase}
+.report-panel{border:1px solid var(--border);border-radius:14px;background:rgba(9,10,25,.8);padding:16px}
+.report-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.report-panel-head strong{font-size:13px}
+.report-panel-head small{font:9.5px 'JetBrains Mono',monospace;color:#777F98}
+.trend-chart{min-height:120px;display:flex;align-items:stretch;gap:13px;padding:11px 10px 0;border:1px solid var(--border);border-radius:11px;background:linear-gradient(180deg,rgba(255,255,255,.02),transparent);position:relative}
+.trend-col{z-index:1;flex:1;min-width:26px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px}
+.trend-stack{width:min(52px,100%);height:74px;display:flex;flex-direction:column;justify-content:flex-end;border:1px solid rgba(255,255,255,.05);border-radius:7px 7px 2px 2px;overflow:hidden}
+.trend-pass{background:linear-gradient(180deg,#02FF98,#00CA71)}
+.trend-fail{background:linear-gradient(180deg,#FF4F76,#D9335A)}
+.trend-col.current .trend-stack{outline:2px solid #68FFBD;box-shadow:0 0 17px rgba(0,240,154,.35)}
+.trend-col small{font:8.5px 'JetBrains Mono',monospace;color:#7D8398;white-space:nowrap}
+.trend-col em{font:8.5px 'JetBrains Mono',monospace;color:#80FFBE;font-style:normal}
+.report-legend{display:flex;justify-content:center;gap:20px;margin:12px 0 16px;color:#8F95AA;font-size:10px}
+.report-legend span{display:flex;align-items:center;gap:7px}
+.legend-dot{width:9px;height:9px;border-radius:50%;background:#02E78B}
+.legend-dot.fail{background:#F34468}
+.report-mini-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:13px;padding-top:15px;border-top:1px solid rgba(255,255,255,.08)}
+.mini-chart{padding:12px;border:1px solid var(--border);border-radius:11px;background:rgba(9,10,25,.8)}
+.mini-chart h4{font-size:11px;margin:0 0 11px;color:#D8D9E3}
+.mini-bars{min-height:60px;display:flex;align-items:flex-end;gap:6px}
+.mini-bar-col{flex:1;display:grid;justify-items:center;gap:5px;min-width:0}
+.mini-bar{width:100%;max-width:34px;min-height:3px;height:var(--h,35%);border-radius:4px 4px 1px 1px;background:var(--bar,#6C6FF2)}
+.mini-bar-col small{font:8px 'JetBrains Mono',monospace;color:#777D91;white-space:nowrap}
+.report-note{color:#747B90;font-size:10px;margin-top:12px;text-align:right}
+
+/* proof cards */
+.sumhead{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-bottom:20px}
+.ringsvg{width:72px;height:72px;transform:rotate(-90deg)}
+.ringsvg circle{fill:none;stroke-width:6;stroke-linecap:round}
+.ringsvg .bgc{stroke:var(--border)}
+.ringsvg .fg{stroke:url(#gr);stroke-dasharray:163.4;stroke-dashoffset:163.4;transition:stroke-dashoffset 1.2s cubic-bezier(.2,.7,.2,1)}
+.kp{display:flex;gap:26px;flex-wrap:wrap}
+.kp b{display:block;font-size:26px;line-height:1.1}
+.kp small{color:var(--muted);font-size:12px}
+.rc .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:11px}
+.rc h3{font-size:15px}
+.bd{font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;white-space:nowrap}
+.bd.pending{background:rgba(245,193,93,.16);color:var(--warn)}
+.bd.pass{background:rgba(61,220,151,.16);color:var(--mint)}
+.bd.fail{background:rgba(242,100,124,.16);color:var(--bad)}
+.bd.unc{background:rgba(108,111,242,.22);color:var(--violet2)}
+.rc dl{margin:0;display:grid;gap:9px;font-size:13px}
+.rc dt{font:500 10px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.rc dd{margin:2px 0 0}
+footer{margin:56px 0 30px;text-align:center;color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="hamb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+  <div class="bc"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8F94FF" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> <span id="bcApp">DemoShop</span></div><div class="sep">/</div>
+  <div class="bc hide-m"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8F94FF" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06.06a1.65 1.65 0 0 0 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1-2.83 2.83l.06.06a1.65 1.65 0 0 0 .33 1.82Z"/></svg> test cases</div><div class="sep hide-m">/</div>
+  <div class="bc plain" id="bcCase">test case</div><div class="free">free</div>
+  <div class="ticons"><span class="tagpill">Agentic QA workspace · Ziro Hackathon 2026</span></div>
+</div>
+
+<div class="casebar">
+  <svg id="caseIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+  <div><div class="t" id="caseTitle">TestPilot AI · plain-English Playwright test writer</div><div class="s" id="caseSub">describe a flow - approve the plan - watch the real browser run it</div></div>
+  <button class="x" id="caseReset" title="Reset the workspace"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+</div>
+
+<div class="ws" id="workspace">
+  <div class="rail">
+    <button class="rbtn on" data-go="workspace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><div class="rlab">overview</div></button>
+    <button class="rbtn" data-go="proof-cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><div class="rlab">steps</div></button>
+    <button class="rbtn" data-go="debug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><div class="rlab">debug</div></button>
+  </div>
+
+  <div class="left">
+    <div class="lrow">
+      <button class="iconbtn" id="resetBtn" title="Clear and start over"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="saverun" id="go">build the test →</button>
+    </div>
+
+    <div class="dep"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8F94C8" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span>dependency · approval gate</span><span class="r" id="gateState">idle</span></div>
+
+    <div class="prompt" id="promptCard">
+      <div class="h">✦ prompt</div>
+      <div id="promptInput">
+        <div class="chips" id="chips"></div>
+        <label class="plabel2" for="flow">What should be tested? <small>(plain English)</small></label>
+        <textarea id="flow" rows="3"></textarea>
+        <label class="plabel2" for="exp">What result do you expect?</label>
+        <input id="exp">
+        <label class="plabel2" for="url">App to test <small>(bundled demo, or a website you choose)</small></label>
+        <select id="url"><option value="v1">DemoShop v1 - the working app</option><option value="v2">DemoShop v2 - after the "redesign" renamed the sign-up button</option><option value="custom">A website I choose - read-only checks</option></select>
+        <input id="siteUrl" type="url" placeholder="https://yoursite.example" spellcheck="false" style="display:none;margin-top:8px" />
+        <div id="siteNote" style="display:none">Checks against a website you choose are <b>read-only</b>: the agent reads the page and verifies what it shows. It never fills forms, clicks buttons, or changes anything.</div>
+        <div class="err" id="err"></div>
+      </div>
+      <div id="promptPlan" style="display:none">
+        <ol id="planList"></ol>
+        <button class="regen" id="regen">⟳ regenerate steps</button>
+      </div>
+    </div>
+
+    <details class="judge">
+      <summary>⚡ judge utilities · 1-click guardrail verifiers</summary>
+      <div class="judge-btns">
+            <button class="jbtn" id="jUncertain" type="button">❓ Trigger "Uncertain"</button>
+            <button class="jbtn" id="jSafety" type="button">🔐 OTP/CAPTCHA Safe Mock</button>
+            <button class="jbtn" id="jDup" type="button">♻️ Duplicate Retry Blocker</button>
+      </div>
+    </details>
+
+    <div class="gate" id="gate">
+      <b id="gateTitle">⏸ Human Approval Required (State-Mutating Action)</b>
+      <p id="gateBody">The proposed Playwright spec uses synthetic data (<code>@example.test</code>) and will create user records. Review the proposed changes and decision rules before approving.</p>
+      <div class="gate-meta" id="gateMeta">Trace: Pending · Idempotency Lock: Armed</div>
+      <button class="gbtn" id="ok">Approve &amp; run twice</button>
+      <button class="gbtn ghost" id="retrySame">Retry Same Key (Test Lock)</button>
+      <button class="gbtn ghost" id="no">Decline</button>
+    </div>
+
+    <div id="stepList"></div>
+  </div>
+
+  <div class="right">
+    <div class="slab" id="slab">workspace</div>
+    <div class="atitle" id="atitle">Describe a test in plain English, then build it</div>
+    <div class="plabel">preview</div>
+    <div class="pwin" id="pwin"><div class="ph" id="pwinPh">Once you approve the plan, the real browser&#39;s screen streams here while it runs your test.<br><span style="font-size:11px;color:#5C6280">The agent studies the app first and shows you every step before anything runs.</span></div></div>
+    <div class="strip" id="strip"><div class="emp">frames from the real run appear here</div></div>
+    <div class="llab2">current locator <span>ⓘ</span></div>
+    <div class="lsub">the element our agent interacts with:</div>
+    <div class="codebox" id="locator">waiting for an approved run</div>
+    <div class="note">Live cadence: a few frames per second while the real browser acts - every frame, step, locator and status comes from the generated test itself, never a timer or a replay.</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section class="sec" id="debug"><h2>Trace &amp; decision checks</h2><p>The exact generated test, the agent's activity, timestamped source evidence, and every explicit decision it made.</p>
+<div class="card">
+<div class="tabs">
+<button class="tb on" data-p="p1">Proposed Test (Diff)</button>
+<button class="tb" data-p="p2">Live Activity Log</button>
+<button class="tb" data-p="p3">Sources &amp; Evidence</button>
+<button class="tb" data-p="p4">Explicit Decision Checks</button>
+</div>
+<div class="pane on" id="p1"><pre id="code"><div class="t">// Your test will appear here once the agent has studied the website.</div></pre><div class="plain" id="plain"><b>IN SIMPLE WORDS</b><div class="t">A short explanation will appear here.</div></div></div>
+<div class="pane" id="p2"><pre id="log"><div class="t">Nothing has happened yet.</div></pre></div>
+<div class="pane" id="p3"><div id="ev"><div class="t" style="color:var(--muted)">No evidence yet. If the agent can't find proof, it returns "uncertain" instead of guessing.</div></div></div>
+<div class="pane" id="p4"><div id="rulesBox"><div class="t" style="color:var(--muted)">Decision checks will appear here with their evidence IDs and reasons.</div></div></div>
+</div></section>
+
+<section class="sec" id="overview"><h2>How it works</h2><p>No coding needed. Four simple steps, with full source traceability and human control.</p>
+<div class="g4">
+<div class="card"><div class="num">1</div><h3>You describe</h3><p>Type what should happen, like "a new user can sign up and see their dashboard".</p></div>
+<div class="card"><div class="num">2</div><h3>Agent studies the site</h3><p>It visits pages and saves Source IDs, URLs, and UTC retrieval times as evidence.</p></div>
+<div class="card"><div class="num">3</div><h3>You approve</h3><p>Proposed code and decision checks are shown before execution. Nothing runs without your yes.</p></div>
+<div class="card"><div class="num">4</div><h3>Proof, twice</h3><p>It runs the test two times with fresh synthetic data to guarantee consistency without duplicates.</p></div>
+</div></section>
+
+<section class="sec" id="smart-report"><h2>Smart report</h2><p>A live health check built only from the real runs made in this browser session.</p>
+<div class="card report-shell">
+<div class="report-head"><div class="report-brand"><div class="report-mark">S</div><div><h3>Smart Report</h3><small>TestPilot AI · Playwright test insights</small></div></div><div class="report-actions"><button class="report-export" id="exportReport">📥 Export JSON</button><span class="report-time" id="reportTime"></span></div></div>
+<div class="report-body"><div class="report-metrics"><div class="pass-ring-wrap"><div class="pass-ring" id="passRing"><strong id="passRate">80%</strong></div>Pass rate</div>
+<div class="metric-tile" style="--metric:#3DDC97"><strong id="metricPassed">4</strong><span>Passed</span></div><div class="metric-tile" style="--metric:#F34468"><strong id="metricFailed">1</strong><span>Failed</span></div><div class="metric-tile" style="--metric:#82849A"><strong id="metricSkipped">1</strong><span>Skipped</span></div><div class="metric-tile" style="--metric:#F5C31C"><strong id="metricFlaky">2</strong><span>Flaky</span></div><div class="metric-tile" style="--metric:#FB8739"><strong id="metricSlow">1</strong><span>Slow</span></div><div class="metric-tile" style="--metric:#8F94FF"><strong id="metricDuration">14.9s</strong><span>Duration</span></div></div>
+<div class="report-panel"><div class="report-panel-head"><strong>📊 Test run trends</strong><small>Real runs, newest last</small></div><div class="trend-chart" id="trendChart" role="img" aria-label="Bar chart of passed and failed tests over real runs"></div><div class="report-legend"><span><i class="legend-dot"></i>Passed</span><span><i class="legend-dot fail"></i>Failed</span></div><div class="report-mini-grid"><div class="mini-chart"><h4>⏱ Duration</h4><div class="mini-bars" id="durationBars"></div></div><div class="mini-chart"><h4>🔴 Flaky</h4><div class="mini-bars" id="flakyBars"></div></div><div class="mini-chart"><h4>🐢 Slow</h4><div class="mini-bars" id="slowBars"></div></div></div></div>
+<div class="report-note">Every number comes from real runs in this browser session. No illustrative data.</div></div></div></section>
+
+<section class="sec" id="proof-cards"><h2>Results &amp; traceable proof</h2><p>Every case shows what you asked, what was expected, what really happened, and the traceable Source IDs &amp; timestamps. Failed and pending results stay visible.</p>
+<div class="sumhead card" style="padding:18px 24px"><svg class="ringsvg" viewBox="0 0 60 60"><defs><linearGradient id="gr"><stop offset="0" stop-color="#3DDC97"/><stop offset="1" stop-color="#8F94FF"/></linearGradient></defs><circle class="bgc" cx="30" cy="30" r="26"/><circle class="fg" id="rg" cx="30" cy="30" r="26"/></svg>
+<div class="kp"><div><b id="kD">0/4</b><small>cases evaluated</small></div><div><b id="kU">0</b><small>synthetic users</small></div><div><b id="kX">0</b><small>duplicates blocked</small></div></div></div>
+<div class="g4" id="cards"></div></section>
+
+<section class="sec"><h2>Designed for reviewer confidence</h2><p>Every dashboard build-guide suggestion is baked into the workflow.</p>
+<div class="g4">
+<div class="card"><h3>🛑 Human-in-the-loop</h3><p>Proposed test diffs and data plans are shown before approval.</p></div>
+<div class="card"><h3>🧪 Synthetic non-PII</h3><p>Every run generates isolated <code>@example.test</code> identities.</p></div>
+<div class="card"><h3>🔐 Safe OTP / CAPTCHA</h3><p>Never bypasses security gates; injects safe mock or manual pause steps.</p></div>
+<div class="card"><h3>♻️ Idempotent locks</h3><p>Execution signatures block duplicate runs when retrying.</p></div>
+</div></section>
+<footer>TestPilot AI · Ziro Agentic AI Hackathon 2026 · Traceable Evidence &amp; HITL Prototype</footer>
+</div>
+
+<script>
+// TestPilot AI - approved neon workspace UI, wired to the REAL backend only.
+// Every plan, step, run, frame and number below comes from /api/plan and /api/run.
+const hostOf=u=>{try{return new URL(u).hostname}catch(_){return u}};
+const SITE_CHECK_LABELS={"page-loads":"the page loads (HTTP 200)","title-contains":"the page title contains","heading-visible":"the main heading shows","text-visible":"the page shows the text","link-visible":"a link shows","form-present":"the page has a form (never filled or submitted)"};
+function siteLabel(a){const m=String(a).match(/^site:([^:]*):([\s\S]*)$/);if(!m)return a;const b=SITE_CHECK_LABELS[m[1]]||m[1];return m[2]?b+" \""+m[2]+"\"":b}
+const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const SC={
+ tc1:{n:"New user signs up",tc:"TC1",flow:"Test that a new user can sign up and see the dashboard, with the account record saved.",exp:"The test passes and a new user record exists",planVersion:"v1",runOverride:""},
+ tc2:{n:"A button changes",tc:"TC2",flow:"Test that a new user can sign up and see the dashboard, with the account record saved.",exp:"The redesign renamed the sign-up button, so this same test fails with a clear explanation",planVersion:"v1",runOverride:"v2"},
+ tc3:{n:"Weak check upgraded",tc:"TC3",flow:"Go to the sign-up page and check the URL changed.",exp:"The address-only check is replaced by checks of what the app really shows",planVersion:"v1",runOverride:""},
+ tc4:{n:"Run it again safely",tc:"TC4",flow:"Register a new user and make sure the account is stored exactly once, even when the test is repeated.",exp:"Fresh test data is used and no duplicate accounts appear",planVersion:"v1",runOverride:""}};
+const ASSERTION_LABELS={
+ "url-contains-dashboard":"Lands on the dashboard page (the address check)",
+ "welcome-visible":"The welcome message with the new user's name is visible",
+ "user-record-exists":"The account record really exists, checked through the app's API",
+ "no-duplicate-account":"No duplicate account was created for this user"};
+const res={},reportRuns=[];let cur="tc1",busy=false,session=null,runningNow=false,planSteps=[];
+
+// ---- workspace status ----
+const CASE_ICON={ok:'<polyline points="20 6 9 17 4 12"/>',run:'<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/>',hold:'<line x1="10" y1="6" x2="10" y2="18"/><line x1="14" y1="6" x2="14" y2="18"/>',bad:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',idle:'<circle cx="12" cy="12" r="9"/>'};
+function setStatus(s,text){const ic=$("#caseIcon");ic.innerHTML=CASE_ICON[s]||CASE_ICON.idle;ic.setAttribute("stroke",{ok:"#3DDC97",run:"#8F94FF",hold:"#F5C15D",bad:"#F2647C",idle:"#8F94C8"}[s]||"#8F94C8");$("#caseSub").textContent=text}
+function gateState(t,c){const g=$("#gateState");g.textContent=t;g.className="r "+(c||"")}
+function setCase(title){$("#caseTitle").textContent=title}
+function log(m,c=""){const l=$("#log");if(l.textContent.startsWith("Nothing has"))l.innerHTML="";const d=document.createElement("div");d.className=c;d.textContent=new Date().toISOString().slice(11,19)+"  "+m;l.append(d);l.scrollTop=1e9}
+function badge(s){return`<span class="bd ${s}">${{pass:"Passed",fail:"Failed · explained",unc:"Uncertain",pending:"Not run yet"}[s]}</span>`}
+function cards(){$("#cards").innerHTML=Object.keys(SC).map(k=>{const r=res[k],s=r?r.status:"pending";return`<div class="card rc"><div class="top"><h3>${SC[k].tc} · ${SC[k].n}</h3>${badge(s)}</div><dl><div><dt>You asked</dt><dd>${esc(r?r.input:SC[k].flow)}</dd></div><div><dt>Expected</dt><dd>${esc(SC[k].exp)}</dd></div><div><dt>What happened</dt><dd>${esc(r?r.actual:"Waiting for a run.")}</dd></div><div><dt>Proof</dt><dd>${esc(r?r.ev:"—")}</dd></div></dl></div>`}).join("");
+ const n=Object.keys(res).length;$("#kD").textContent=n+"/"+Object.keys(SC).length;$("#kU").textContent=reportRuns.reduce((a,r)=>a+(r.passed?2:0),0);$("#kX").textContent="0";$("#rg").style.strokeDashoffset=163.4*(1-n/Math.max(Object.keys(SC).length,1))}
+function pick(id){cur=id;document.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.dataset.id===id));$("#flow").value=SC[id].flow;$("#exp").value=SC[id].exp;$("#err").textContent="";$("#url").value=SC[id].planVersion;const cstm=SC[id].planVersion==="custom";$("#siteUrl").style.display=cstm?"":"none";$("#siteNote").style.display=cstm?"":"none";setCase(SC[id].tc+" · "+SC[id].n)}
+$("#url").addEventListener("change",()=>{const c=$("#url").value==="custom";$("#siteUrl").style.display=c?"":"none";$("#siteNote").style.display=c?"":"none";$("#bcApp").textContent=c?"External site":"DemoShop";if(c){document.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));if(!SC.custom||!SC.custom.flow){$("#flow").value="";$("#exp").value=""}}})
+function addRule(title,body,kind){const box=$("#rulesBox");if(box.querySelector(".t"))box.innerHTML="";const d=document.createElement("div");d.className="ev";d.innerHTML=`<code>${esc(title)}</code><span>${body}</span>`;box.append(d)}
+
+// ---- step cards: the real actions the generated test will take ----
+function stepKind(label){return /^check/i.test(label)?"assertion":"interaction"}
+function renderSteps(steps){planSteps=steps||[];
+ $("#stepList").innerHTML=planSteps.map((st,i)=>`<div class="istep" data-i="${i}"><span class="drag">⠿</span><span style="color:#7A7FB0;font-size:12px">➤</span><span class="tx"><span class="kind">${stepKind(st.label)}</span><b>${esc(st.label)}</b></span><span class="st-ic"></span></div>`).join("")}
+function markStep(i,cls,ic){const el=document.querySelector(`.istep[data-i="${i}"]`);if(!el)return;el.classList.remove("cur","done","failed");if(cls)el.classList.add(cls);el.querySelector(".st-ic").textContent=ic||(cls==="done"?"✔":cls==="cur"?"●":cls==="failed"?"✕":"")}
+function clearStepMarks(){document.querySelectorAll(".istep").forEach(el=>{el.classList.remove("cur","done","failed");el.querySelector(".st-ic").textContent=""})}
+
+// ---- prompt card modes ----
+function promptMode(m){$("#promptInput").style.display=m==="input"?"":"none";$("#promptPlan").style.display=m==="plan"?"":"none";document.getElementById("workspace").classList.toggle("plan-on",m==="plan")}
+function showPlanSteps(data){promptMode("plan");const rows=[data.plan.goal].concat((data.steps||[]).map(s=>s.label));$("#planList").innerHTML=rows.map(r=>`<li>${esc(r)}</li>`).join("")}
+
+// ---- right panel ----
+function setPhase(slab,title,locator){$("#slab").textContent=slab;$("#atitle").textContent=title;if(locator!=null)$("#locator").textContent=locator}
+function previewPlaceholder(html){$("#pwin").innerHTML=`<div class="ph" id="pwinPh">${html}</div>`}
+function previewIframe(version){$("#pwin").innerHTML=`<iframe title="Live demo app" src="/demo/${version}/signup"></iframe>`}
+function stripPlaceholders(msg){$("#strip").innerHTML=`<div class="emp">${msg||"frames from the real run appear here"}</div>`}
+
+// ---- real backend calls ----
+async function postPlan(message,version){
+ const r=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,version})});
+ const d=await r.json();if(!r.ok)throw new Error(d.error||"Planning failed");return d}
+async function postPlanSite(message,url){
+ const r=await fetch("/api/plan-site",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,url})});
+ const d=await r.json();if(!r.ok)throw new Error(d.error||"Planning failed");return d}
+async function postRun(id,override){
+ const r=await fetch("/api/run/"+id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(override?{versionOverride:override}:{})});
+ const d=await r.json();return{ok:r.ok,status:r.status,data:d}}
+
+// ---- live run feed: one poll returns latest frame + filmstrip + per-step status ----
+let feedTimer=null,feedSeq=0;
+function showLiveFrame(f){
+ let img=$("#liveFrameImg");
+ if(!img){$("#pwin").innerHTML="";img=document.createElement("img");img.id="liveFrameImg";img.className="live";img.alt="Live frames from the real browser running this test on the server";$("#pwin").append(img)}
+ img.src="data:image/jpeg;base64,"+f.data}
+function renderStrip(frames){
+ const s=$("#strip");if(!frames||!frames.length)return;
+ s.innerHTML=frames.map((f,i)=>`<img src="data:image/jpeg;base64,${f.data}" class="${i===frames.length-1?"sel":""}" alt="real frame ${i+1} from the running test browser">`).join("");
+ s.scrollLeft=s.scrollWidth}
+function startStateFeed(id){
+ stopStateFeed();feedSeq=0;
+ feedTimer=setInterval(async()=>{
+  try{
+   const r=await fetch("/api/live/"+encodeURIComponent(id)+"/state",{cache:"no-store"});
+   if(!r.ok)return;
+   const st=await r.json();
+   if(st.frame&&st.frame.seq!==feedSeq){feedSeq=st.frame.seq;showLiveFrame(st.frame)}
+   if(st.frames&&st.frames.length)renderStrip(st.frames);
+   const actions=st.actions||[];
+   actions.forEach(a=>markStep(a.index,a.status==="done"?"done":a.status==="failed"?"failed":"cur"));
+   const ci=st.currentIndex;
+   if(ci>=0&&planSteps[ci]){
+    const stp=planSteps[ci];
+    setPhase("step - "+stepKind(stp.label),stp.label,stp.locator);
+   }
+  }catch{} // a missed poll just shows the previous real frame
+ },650)}
+function stopStateFeed(){if(feedTimer){clearInterval(feedTimer);feedTimer=null}}
+
+async function plan(){
+ if(busy)return;
+ const f=$("#flow").value.trim(),e=$("#exp").value.trim();
+ $("#err").textContent="";
+ if(f.length<12||e.length<4){
+  $("#err").textContent="Please add what to test and the expected result. The agent marks uncertain instead of guessing.";
+  res[cur]={status:"unc",input:f||"(empty)",actual:"Not enough information, so the agent returned UNCERTAIN instead of guessing.",ev:"Input validation check"};
+  addRule("INPUT_VALIDATION","Missing or too-short input - the agent declined to guess and returned an explicit UNCERTAIN state.","warn");
+  log("UNCERTAIN: input incomplete. The agent did not guess.","lw");
+  setStatus("hold","uncertain - not enough information, nothing guessed");cards();return}
+ // real safety guardrail: OTP / CAPTCHA requests are never bypassed
+ if(/otp|captcha/i.test(f)){
+  setStatus("hold","stopped at a security check - never bypassed");
+  log("OTP/CAPTCHA detected in the request. The agent never bypasses security checks.","lw");
+  addRule("SAFE_OTP_CAPTCHA","The request mentions OTP or CAPTCHA. This agent never bypasses security gates. In a real product flow it would pause for a safe manual step; the bundled demo has no OTP/CAPTCHA, so no test was generated.","warn");
+  res[cur]={status:"unc",input:f,actual:"Stopped safely: OTP/CAPTCHA bypass is never attempted. A safe manual step would be shown in a real deployment.",ev:"Guardrail decision, recorded in Decision Checks"};
+  cards();return}
+ busy=true;$("#go").disabled=true;
+ $("#log").innerHTML="";$("#ev").innerHTML="";$("#code").innerHTML="";
+ clearStepMarks();$("#stepList").innerHTML="";
+ const version=$("#url").value;
+ const custom=version==="custom";
+ let siteUrl="";
+ if(custom){
+  siteUrl=$("#siteUrl").value.trim();
+  if(!/^https?:\/\/[^\s]+\.[^\s]+/.test(siteUrl)){
+   $("#err").textContent="Enter the full website address, starting with https:// (for example https://example.com).";
+   busy=false;$("#go").disabled=false;return}
+  if(!SC.custom)SC.custom={n:"Your website",tc:"CUSTOM",flow:"",exp:"",planVersion:"custom"};
+  SC.custom.flow=f;SC.custom.exp=e;cur="custom";
+  document.querySelectorAll(".chip").forEach(c=>c.classList.remove("on"));
+ }
+ const message=e?f+" Expected result: "+e:f;
+ stopStateFeed();stripPlaceholders();
+ gateState("planning","");
+ setStatus("run",custom?("reading "+hostOf(siteUrl)+" (read-only)…"):("studying DemoShop "+version+" live…"));
+ setPhase("plan","Reading the live page before writing any test","…");
+ if(custom)previewPlaceholder("This is a website you chose. TestPilot checks it <b>read-only</b>: it reads the page and verifies what it shows. It never fills forms, clicks buttons, or changes anything.<br><br>Once you approve, the <b>real test browser's screen streams here live</b>.");
+ else previewIframe(version);
+ log("Request received: "+f,"lo");
+ const t0=Date.now();
+ try{
+  const data=await (custom?postPlanSite(message,siteUrl):postPlan(message,version));
+  session=data;
+  const secs=((Date.now()-t0)/1000).toFixed(1);
+  const src=data.evidence.source;
+  const evd=document.createElement("div");evd.className="ev";
+  evd.innerHTML=`<code>${esc(src.url)}</code><span>HTTP ${esc(String(src.httpStatus))} · ${custom?Object.keys(data.evidence.selectors).length+" interactive elements catalogued (read-only)":data.evidence.fieldsFound.length+" fields and the submit button found"}</span><small>Retrieved ${esc(src.retrievedAt.replace("T"," ").slice(0,19))} UTC</small>`;
+  $("#ev").append(evd);
+  if(Object.keys(data.evidence.selectors||{}).length){
+   const ev2=document.createElement("div");ev2.className="ev";
+   ev2.innerHTML=`<code>selectors</code><span>${Object.entries(data.evidence.selectors).map(([k,v])=>k+": "+v).join(" · ")}</span><small>Stable data-testid selectors from the live page</small>`;
+   $("#ev").append(ev2);
+  }
+  log(custom?("Page read in "+secs+"s (read-only inspection; nothing was changed)"):("Page read in "+secs+"s - "+data.evidence.fieldsFound.length+" fields found, submit button: "+data.evidence.submitFound.label),"lo");
+  const c=$("#code");
+  data.code.split("\n").forEach(t=>{const d=document.createElement("div");d.className=/^import|^test\(/.test(t)?"k":"";d.textContent=t||" ";c.append(d)});
+  log("Plan ready ("+data.llm.note+")","lo");
+  // explicit decision checks (real)
+  addRule("SOURCE_EVIDENCE","Page read from "+esc(src.url)+" at "+esc(src.retrievedAt)+" UTC (HTTP "+src.httpStatus+").");
+  if(custom){
+   addRule("READ_ONLY_SCOPE","Every check against "+hostOf(siteUrl)+" is read-only: the page is read and verified, never filled, clicked, submitted, or changed.");
+   data.validation.repairs.forEach(r=>addRule("SAFETY_CHECKER",esc(r)));
+   if(data.plan.stateChangeIntent)addRule("READ_ONLY_LIMIT","Your request mentions changing something on the site (like signing up or submitting a form). That part was not turned into a test: external runs never change anything. Doing that would need your separate, explicit approval - it is never automatic.","warn");
+  }else{
+   addRule("STABLE_SELECTORS","data-testid selectors preferred: "+Object.values(data.evidence.selectors).join(", ")+".");
+  }
+  data.plan.assertions.forEach(a=>addRule(data.validation.repairs.includes(a)?"NO_WEAK_ASSERTIONS":"ASSERTION",esc(ASSERTION_LABELS[a]||siteLabel(a))+(data.validation.repairs.includes(a)?" — added by the safety checker because the request alone was too weak.":"")));
+  if(data.plan.weakRequestUpgraded&&!custom)log("Weak request upgraded: the safety checker added "+data.validation.repairs.length+" real check(s): "+data.validation.repairs.join(", "),"lw");
+  if(custom&&data.validation.repairs.length)log("Safety checker: "+data.validation.repairs.join(" "),"lw");
+  if(custom&&data.plan.stateChangeIntent)log("Read-only limit: your request mentions changing the site - that part is not automated.","lw");
+  addRule("HUMAN_APPROVAL",custom?("Nothing has run yet. Approving runs this exact read-only test twice against "+hostOf(siteUrl)+" - nothing is filled, clicked, submitted, or changed on the site."):("Nothing has run yet. Approving executes this exact test twice against DemoShop "+(SC[cur].runOverride||data.plan.version)+"."));
+  const rows=[data.plan.goal,"","What the test will check:"].concat(data.plan.assertions.map(a=>" • "+(ASSERTION_LABELS[a]||siteLabel(a))+(data.validation.repairs.includes(a)?"  (added by the safety checker)":"")));
+  $("#plain").innerHTML="<b>IN SIMPLE WORDS</b>"+rows.map(x=>`<div>${esc(x)||" "}</div>`).join("");
+  // workspace: show the real steps this exact test will take
+  renderSteps(data.steps||[]);
+  showPlanSteps(data);
+  setStatus("hold","plan ready - waiting for your approval, nothing has run");
+  setPhase("approval gate","Review the exact steps, then approve to run them for real",(data.steps&&data.steps[0])?data.steps[0].locator:"…");
+  gateState("⏸ waiting","wait");
+  if(custom){
+   $("#gateTitle").textContent="⏸ Human Approval Required (Read-Only External Run)";
+   $("#gateBody").textContent="Approving runs the read-only checks above twice against "+hostOf(siteUrl)+" in a real browser on the server. Nothing is filled, clicked, submitted, or changed on the site; no account is created. The site only sees two ordinary page visits.";
+  }else{
+   $("#gateTitle").textContent="⏸ Human Approval Required (State-Mutating Action)";
+   $("#gateBody").innerHTML="The proposed Playwright spec uses synthetic data (<code>@example.test</code>) and will create user records. Review the proposed changes and decision rules before approving.";
+  }
+  $("#gateMeta").textContent="Trace: "+data.id+" · Idempotency Lock: Armed (the server rejects a second run while one is in flight)";
+  log("Waiting for approval. Nothing has run.","lw");
+  $("#gate").style.display="block";
+ }catch(err){
+  setStatus("bad","planning failed");gateState("idle","");
+  log("Planning failed: "+err.message,"lb");
+  setPhase("error","Planning failed: "+err.message,"—");
+  busy=false;$("#go").disabled=false;
+ }
+}
+
+async function run(){
+ if(!session||runningNow)return;
+ $("#gate").style.display="none";
+ const s=session;
+ const override=SC[cur].runOverride||"";
+ const target=override||s.plan.version;
+ const siteMode=s.plan.version==="site";
+ const targetLabel=siteMode?hostOf(s.plan.url):("DemoShop "+target);
+ runningNow=true;
+ gateState("✓ approved","ok");
+ setStatus("run","live run · real browser · "+targetLabel+(siteMode?" (read-only)":""));
+ setPhase("run","Approved - the real browser is starting on the server","…");
+ clearStepMarks();
+ log("Approved. Run 1 starting against "+targetLabel+(siteMode?" (read-only)":"")+".","lo");
+ startStateFeed(s.id); // watch the actual test browser + real per-step statuses
+ const t0=Date.now();
+ const ticker=setInterval(()=>{const sec=Math.round((Date.now()-t0)/1000);setStatus("run","live run · real browser · "+sec+"s")},1000);
+ try{
+  const out=await postRun(s.id,override);
+  clearInterval(ticker);runningNow=false;stopStateFeed();
+  if(!out.ok&&out.status===409&&out.data.code==="capacity"){
+   // server busy with another session's run: this session was NOT started; offer the gate again
+   setStatus("hold","server busy - one run at a time, nothing started");
+   gateState("⏸ waiting","wait");
+   log("Server busy: "+out.data.error,"lw");
+   addRule("CAPACITY_CONTROL","The server runs one browser job at a time (free tier). A second approval was honestly declined with HTTP 409 instead of crashing the instance; nothing was run for this approval.");
+   $("#gate").style.display="block";
+   busy=false;$("#go").disabled=false;
+   return}
+  if(!out.ok)throw new Error(out.data.error||"Run failed");
+  const data=out.data;session=data;const r=data.result;
+  const secs=((Date.now()-t0)/1000).toFixed(1);
+  const pass=r.passed;
+  // final per-step truth: a fully passed run leaves every step done
+  if(pass)planSteps.forEach((_,i)=>markStep(i,"done"));
+  r.runs.forEach((x,i)=>{
+   log("Run "+(i+1)+" "+(x.passed?"PASSED":"FAILED")+" in "+(x.durationMs!=null?(x.durationMs/1000).toFixed(1)+"s":"n/a")+" - "+x.explanation,x.passed?"lo":"lb");
+  });
+  if(!r.stable)log("The two runs disagreed - this test is flaky.","lb");
+  const proof=r.runs.map((x,i)=>"run "+(i+1)+": "+(x.passed?"pass":"fail")+" in "+(x.durationMs!=null?(x.durationMs/1000).toFixed(1)+"s":"n/a")).join("; ");
+  const actual=pass
+   ?"Passed "+r.runs.filter(x=>x.passed).length+" of "+r.runs.length+" real browser runs in "+secs+"s. "+(siteMode?"Read-only checks: the page was read, never changed. ":"Each run used a fresh mock account; duplicates: 0. ")+r.runs[0].explanation
+   :"Failed "+r.runs.filter(x=>!x.passed).length+" of "+r.runs.length+" real browser runs in "+secs+"s. "+r.runs[0].explanation;
+  res[cur]={status:pass?"pass":"fail",input:$("#flow").value.trim(),actual,ev:"Trace "+data.id+" · "+(siteMode?hostOf(s.plan.url):("DemoShop "+data.runAgainst))+" · "+proof+" · "+(r.stable?"stable across both runs":"flaky")};
+  reportRuns.push({scenario:cur,passed:pass,stable:r.stable,durationSec:Number(secs),runs:r.runs.map(x=>({passed:x.passed,durationMs:x.durationMs})),ranAgainst:data.runAgainst,at:new Date().toISOString(),explanation:r.runs[0].explanation});
+  setStatus(pass?"ok":"bad",pass?"passed twice · proof saved":"failed, and explained");
+  setPhase(pass?"done":"failed",pass?"All checks passed":"Failure, in plain words",r.runs[0].explanation);
+  gateState("✓ approved","ok");
+  liveEvidence(r.runs,siteMode?s.plan.url:target);
+  fin(cur);
+ }catch(err){
+  clearInterval(ticker);runningNow=false;stopStateFeed();
+  setStatus("bad","run failed");gateState("idle","");
+  setPhase("error","Run failed: "+err.message,"—");
+  log("Run failed: "+err.message,"lb");
+  busy=false;$("#go").disabled=false;
+ }
+}
+function no(){$("#gate").style.display="none";setStatus("idle","stopped - nothing was run");gateState("idle","");log("You declined. Nothing executed.","lw");busy=false;$("#go").disabled=false}
+function fin(id){cards();refreshSmartReport();busy=false;$("#go").disabled=false;$("#go").textContent="run again with fresh data →"}
+
+function liveEvidence(runs,target){
+ const any=runs.some(x=>x.shot);
+ if(!any)return; // no capture: keep the live view as-is
+ const box=$("#pwin");
+ box.innerHTML='<div class="evshot">'+runs.map((x,i)=>x.shot?
+  '<figure style="margin:0 0 10px"><img src="'+x.shot+'" alt="Final page state from run '+(i+1)+'">'+
+  '<figcaption>REAL SCREENSHOT · RUN '+(i+1)+' · '+(x.passed?'PASSED':'FAILED')+' · captured '+String(x.startedAt||'').replace('T',' ').slice(0,19)+' UTC by the test runner\'s browser · not a replay</figcaption></figure>':'').join('')+'</div>';
+}
+
+// real duplicate-retry test: while a run is in flight, the server rejects a second one
+async function retrySame(){
+ if(!session||!runningNow){
+  log("Duplicate-retry test: start and approve a run first, then press this while it runs. The server will reject the duplicate.","lw");
+  return}
+ const out=await postRun(session.id,SC[cur].runOverride||"");
+ if(!out.ok&&(out.status===409||/Already running/i.test(out.data.error||""))){
+  log("Duplicate run blocked by the server: HTTP 409 \""+(out.data.error||"Already running.")+"\"","lb");
+  addRule("IDEMPOTENCY_LOCK","A second run request during an active run was rejected by the server (HTTP 409). The same approval cannot execute twice.");
+ }else{
+  log("Retry attempt returned an unexpected result: "+JSON.stringify(out.data).slice(0,120),"lw")}
+}
+
+// judge 1-click verifiers - all trigger REAL behavior above
+function jUncertain(){if(busy)return;pick(cur);$("#flow").value="test login";$("#exp").value="";plan()}
+function jSafety(){if(busy)return;$("#flow").value="Test that a user can sign up with OTP and CAPTCHA verification and see the dashboard";$("#exp").value="Uses a safe manual step instead of bypassing security";plan()}
+function jDup(){retrySame()}
+
+// ---- smart report: real session runs only ----
+function drawBars(id,values,color,format){const el=$(id);if(!el)return;if(!values.length){el.innerHTML='<small style="color:var(--muted)">No runs yet</small>';return}el.innerHTML=values.map((v,i)=>`<div class="mini-bar-col"><i class="mini-bar" style="--h:${Math.max(5,Math.min(100,v/(Math.max(...values)||1)*100))}%;--bar:${color}"></i><small>${format(v)}</small></div>`).join("")}
+function refreshSmartReport(){
+ const passed=reportRuns.filter(r=>r.passed).length,failed=reportRuns.filter(r=>!r.passed).length;
+ const flaky=reportRuns.filter(r=>!r.stable).length,slow=reportRuns.filter(r=>r.durationSec>45).length;
+ const avg=reportRuns.length?reportRuns.reduce((a,r)=>a+r.durationSec,0)/reportRuns.length:0;
+ const total=passed+failed,rate=total?Math.round(passed/total*100):0;
+ $("#metricPassed").textContent=passed;$("#metricFailed").textContent=failed;$("#metricSkipped").textContent=0;
+ $("#metricFlaky").textContent=flaky;$("#metricSlow").textContent=slow;$("#metricDuration").textContent=avg.toFixed(1)+"s";
+ $("#passRate").textContent=rate+"%";
+ const ring=$("#passRing");if(ring)ring.style.background=`conic-gradient(#12EF98 0 ${rate}%,#26303A ${rate}% 100%)`;
+ const tc=$("#trendChart");
+ if(!reportRuns.length){tc.innerHTML='<small style="color:var(--muted);padding:10px">No runs yet - complete a run above and this chart fills in with real results.</small>'}
+ else{const last=reportRuns.slice(-7);tc.innerHTML=last.map((r,i)=>{const p=r.runs.filter(x=>x.passed).length,tt=r.runs.length||1,ok=Math.round(p/tt*100);return`<div class="trend-col ${i===last.length-1?"current":""}"><div class="trend-stack"><i class="trend-fail" style="height:${100-ok}%"></i><i class="trend-pass" style="height:${ok}%"></i></div>${i===last.length-1?`<em>${p}/${tt} passed</em>`:"<small>Run "+String(i+1).padStart(2,"0")+"</small>"}</div>`}).join("")}
+ drawBars("#durationBars",reportRuns.map(r=>r.durationSec),"#8F94FF",v=>v.toFixed(0)+"s");
+ drawBars("#flakyBars",reportRuns.map(r=>r.stable?0:1),"#F5C31C",v=>v?"yes":"0");
+ drawBars("#slowBars",reportRuns.map(r=>r.durationSec>45?1:0),"#FB8739",v=>v?"yes":"0");
+ $("#reportTime").textContent=new Intl.DateTimeFormat(undefined,{month:"2-digit",day:"2-digit",year:"numeric",hour:"numeric",minute:"2-digit",second:"2-digit"}).format(new Date())}
+
+// ---- reset ----
+function resetWorkspace(){
+ if(runningNow)return; // never pretend to cancel a real run in flight
+ stopStateFeed();
+ session=null;busy=false;$("#go").disabled=false;$("#go").textContent="build the test →";
+ promptMode("input");
+ $("#gate").style.display="none";gateState("idle","");
+ $("#stepList").innerHTML="";planSteps=[];
+ previewPlaceholder("The agent inspects the real app, shows you the exact steps it will take, then - only after you approve - runs them in a real browser whose screen streams here while it works.");
+ stripPlaceholders();
+ setPhase("workspace","Describe a test in plain English, then build it","waiting for an approved run");
+ setStatus("idle","describe a flow - approve the plan - watch the real browser run it");
+ log("Workspace reset. Nothing is running.","t");
+}
+
+// ---- wire up ----
+$("#chips").innerHTML=Object.keys(SC).map(k=>`<button class="chip" data-id="${k}">${SC[k].tc} · ${SC[k].n}</button>`).join("");
+$("#chips").onclick=e=>{const c=e.target.closest(".chip");if(c&&!busy)pick(c.dataset.id)};
+document.querySelectorAll(".tb").forEach(t=>t.onclick=()=>{document.querySelectorAll(".tb,.pane").forEach(x=>x.classList.remove("on"));t.classList.add("on");$("#"+t.dataset.p).classList.add("on")});
+$("#go").onclick=plan;$("#ok").onclick=run;$("#no").onclick=no;$("#retrySame").onclick=retrySame;
+$("#jUncertain").onclick=jUncertain;$("#jSafety").onclick=jSafety;$("#jDup").onclick=jDup;
+$("#regen").onclick=resetWorkspace;$("#resetBtn").onclick=resetWorkspace;$("#caseReset").onclick=resetWorkspace;
+document.querySelectorAll(".rbtn").forEach(b=>b.onclick=()=>{
+ document.querySelectorAll(".rbtn").forEach(x=>x.classList.remove("on"));b.classList.add("on");
+ document.getElementById(b.dataset.go).scrollIntoView({behavior:"smooth",block:"start"})});
+$("#exportReport").onclick=()=>{
+ const payload={product:"TestPilot AI",mode:"live prototype - real Playwright runs only",generatedAt:new Date().toISOString(),summary:{passed:reportRuns.filter(r=>r.passed).length,failed:reportRuns.filter(r=>!r.passed).length,flaky:reportRuns.filter(r=>!r.stable).length,runs:reportRuns.length},scenarios:Object.keys(SC).map(k=>({id:SC[k].tc,name:SC[k].n,status:res[k]?.status||"not run"})),runs:reportRuns};
+ const a=document.createElement("a"),blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+ a.href=URL.createObjectURL(blob);a.download="testpilot-smart-report.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000)};
+pick("tc1");cards();refreshSmartReport();
+</script>
+</body>
+</html>
