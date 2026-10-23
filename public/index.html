@@ -151,6 +151,35 @@ footer{margin-top:60px;text-align:center;color:var(--mu);font-size:13px}
 @keyframes type-caret{to{opacity:0}}@keyframes target-click{50%{filter:brightness(1.18);box-shadow:0 0 0 5px #43c5b033,0 0 22px #43c5b044}}@keyframes kpi-in{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}@keyframes chart-draw{to{stroke-dashoffset:0}}
 @media(max-width:900px){.live-workspace{grid-template-columns:1fr}.report-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .glow{max-width:100vw!important;overflow:hidden!important}
+
+.tp-pipe{display:flex;align-items:flex-start;justify-content:space-between;margin:14px 0 4px}
+.tp-node{display:flex;flex-direction:column;align-items:center;gap:5px;width:56px;flex:none}
+.tp-ic{width:34px;height:34px;border-radius:10px;background:#0b1626;border:1.5px solid #1e3a4c;display:flex;align-items:center;justify-content:center;transition:all .4s}
+.tp-ic svg{width:16px;height:16px;stroke:#7d8aa5;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tp-node p{color:#8e96af;font-size:9px;font-weight:600;text-align:center;margin:0}
+.tp-link{flex:1;height:2px;background:#1e3a4c;border-radius:2px;margin-top:16px;position:relative;min-width:8px}
+.tp-link i{position:absolute;top:-3px;left:0;width:8px;height:8px;border-radius:50%;background:#2dd4bf;box-shadow:0 0 10px 2px #2dd4bf88;opacity:0}
+.tp-link.flow i{opacity:1;animation:tpMove 1.4s linear infinite}
+.tp-link.full{background:linear-gradient(90deg,#2dd4bf,#38bdf8)}
+.tp-node.done .tp-ic{border-color:#2dd4bf;background:#052e2b;box-shadow:0 0 12px #2dd4bf44}
+.tp-node.done .tp-ic svg{stroke:#5eead4}.tp-node.done p{color:#5eead4}
+.tp-node.act .tp-ic{border-color:#38bdf8;box-shadow:0 0 14px #38bdf866;animation:tpPulse 1.1s ease-in-out infinite}
+.tp-node.act .tp-ic svg{stroke:#7dd3fc}.tp-node.act p{color:#7dd3fc}
+.tp-node.wait .tp-ic{border-color:#f59e0b;background:#2a1503;box-shadow:0 0 14px #f59e0b55;animation:tpPulse 1.6s ease-in-out infinite}
+.tp-node.wait .tp-ic svg{stroke:#fbbf24}.tp-node.wait p{color:#fbbf24}
+.tp-node.bad .tp-ic{border-color:#f43f5e;background:#2a0a12;box-shadow:0 0 12px #f43f5e44}
+.tp-node.bad .tp-ic svg{stroke:#fda4af}.tp-node.bad p{color:#fda4af}
+.tp-loop{display:flex;align-items:flex-start;border:1.5px dashed #1e4a5c;border-radius:12px;padding:8px 6px 4px;position:relative;flex:none;transition:all .4s}
+.tp-loop .tp-tag{position:absolute;top:-8px;left:10px;background:#10121d;padding:0 6px;color:#38bdf8;font-size:8px;letter-spacing:.08em;text-transform:uppercase}
+.tp-loop.run{border-color:#38bdf8;animation:tpLoopPulse 1.4s ease-in-out infinite}
+.tp-loop.done{border-color:#2dd4bf}
+.tp-loop.bad{border-color:#f43f5e}
+.tp-loop .tp-link{min-width:10px}
+.tp-cap{font-size:9px;color:#737b93;margin:6px 0 0;text-align:center}
+@keyframes tpMove{0%{left:0}100%{left:calc(100% - 8px)}}
+@keyframes tpPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes tpLoopPulse{0%,100%{box-shadow:0 0 0 #38bdf800}50%{box-shadow:0 0 14px #38bdf844}}
+@media (max-width:700px){.tp-node{width:44px}.tp-node p{font-size:8px}}
 </style>
 </head>
 <body>
@@ -222,7 +251,7 @@ footer{margin-top:60px;text-align:center;color:var(--mu);font-size:13px}
 </div></section>
 
 <section class="sec rv" id="live-run"><h2>Watch the agent work</h2><p>Watch the agent's plan, activity and the real target app side by side during a real run.</p><div class="live-workspace">
-<section class="card live-card"><div class="live-head"><div><strong>Agent activity</strong><div class="live-kicker">REAL AGENT RUN</div></div><span class="live-status" id="liveStatus" data-state="idle" role="status" aria-live="polite"><i></i><span id="liveStatusText">READY</span></span></div><div class="live-body"><div class="live-progress-row"><span id="liveAction">Waiting for a run</span><span id="livePercent">0%</span></div><div class="live-progress"><i id="liveProgressFill"></i></div><div class="live-step-list" id="liveStepList"><div class="live-step"><i>1</i><b>Understand the request</b><small>READY</small></div><div class="live-step"><i>2</i><b>Inspect the target app</b><small>READY</small></div><div class="live-step"><i>3</i><b>Prepare a test plan</b><small>READY</small></div><div class="live-step"><i>4</i><b>Pass the approval gate</b><small>READY</small></div><div class="live-step"><i>5</i><b>Run the first attempt</b><small>READY</small></div><div class="live-step"><i>6</i><b>Verify a fresh rerun</b><small>READY</small></div></div><div class="live-events" id="liveEvents" aria-live="polite" aria-relevant="additions"><div class="live-event">Agent ready. Select a test case above, then start the demo.</div></div><button class="cta live-run-btn" id="startAutonomous">▶ Run a real test</button><p class="live-note">Real agent. The test runs in a real browser on the server. While it runs, that browser's actual screen streams here frame by frame - watch it navigate, type and click. When it finishes, the preview shows the real screenshots that browser captured.</p><div class="live-approval" id="liveApproval" hidden role="group" aria-labelledby="liveApprovalTitle"><div class="live-approval-copy"><span class="approval-mark">Ⅱ</span><div><strong id="liveApprovalTitle">Review the plan</strong><p>Check the proposed actions in the preview. The test pauses here until you approve it.</p></div></div><div class="live-approval-actions"><button class="cta sm" id="approveLive">Approve &amp; run</button><button class="cta sm ghost" id="declineLive">Cancel run</button></div></div></div></section>
+<section class="card live-card"><div class="live-head"><div><strong>Agent activity</strong><div class="live-kicker">REAL AGENT RUN</div></div><span class="live-status" id="liveStatus" data-state="idle" role="status" aria-live="polite"><i></i><span id="liveStatusText">READY</span></span></div><div class="live-body"><div class="live-progress-row"><span id="liveAction">Waiting for a run</span><span id="livePercent">0%</span></div><div class="live-progress"><i id="liveProgressFill"></i></div><div class="tp-pipe" id="tpPipeStd" aria-hidden="true"><div class="tp-node" id="tpS0"><span class="tp-ic"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span><p>Prompt</p></div><div class="tp-link"><i></i></div><div class="tp-node" id="tpS1"><span class="tp-ic"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><p>Inspect</p></div><div class="tp-link"><i></i></div><div class="tp-node" id="tpS2"><span class="tp-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5h.1a1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1h.2a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1Z"/></svg></span><p>Generate</p></div><div class="tp-link"><i></i></div><div class="tp-node" id="tpS3"><span class="tp-ic"><svg viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.9-2.3l-2.7-3.1a2 2 0 0 1 3-2.7L8 15"/></svg></span><p>Approve</p></div><div class="tp-link"><i></i></div><div class="tp-node" id="tpS4"><span class="tp-ic"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><p>Verify</p></div></div><div class="tp-pipe" id="tpPipeAgent" style="display:none" aria-hidden="true"><div class="tp-node" id="tpA0"><span class="tp-ic"><svg viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.9-2.3l-2.7-3.1a2 2 0 0 1 3-2.7L8 15"/></svg></span><p>Approve</p></div><div class="tp-link"><i></i></div><div class="tp-loop" id="tpLoop"><span class="tp-tag" id="tpLoopTag">repeats per step</span><div class="tp-node" id="tpA1"><span class="tp-ic"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></span><p>Observe</p></div><div class="tp-link"><i></i></div><div class="tp-node" id="tpA2"><span class="tp-ic"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.4-1.2 4.1-2.6 5.6-.9 1-1.4 2-1.4 3.4h-6c0-1.4-.5-2.4-1.4-3.4C6.2 13.1 5 11.4 5 9a7 7 0 0 1 7-7Z"/><path d="M9 21h6"/></svg></span><p>Decide</p></div><div class="tp-link"><i></i></div><div class="tp-node" id="tpA3"><span class="tp-ic"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span><p>Act</p></div></div><div class="tp-link"><i></i></div><div class="tp-node" id="tpA4"><span class="tp-ic"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><p>Verify</p></div></div><p class="tp-cap">Lights follow the real run state only - amber waits for you, green verified, red failed.</p><div class="live-step-list" id="liveStepList"><div class="live-step"><i>1</i><b>Understand the request</b><small>READY</small></div><div class="live-step"><i>2</i><b>Inspect the target app</b><small>READY</small></div><div class="live-step"><i>3</i><b>Prepare a test plan</b><small>READY</small></div><div class="live-step"><i>4</i><b>Pass the approval gate</b><small>READY</small></div><div class="live-step"><i>5</i><b>Run the first attempt</b><small>READY</small></div><div class="live-step"><i>6</i><b>Verify a fresh rerun</b><small>READY</small></div></div><div class="live-events" id="liveEvents" aria-live="polite" aria-relevant="additions"><div class="live-event">Agent ready. Select a test case above, then start the demo.</div></div><button class="cta live-run-btn" id="startAutonomous">▶ Run a real test</button><p class="live-note">Real agent. The test runs in a real browser on the server. While it runs, that browser's actual screen streams here frame by frame - watch it navigate, type and click. When it finishes, the preview shows the real screenshots that browser captured.</p><div class="live-approval" id="liveApproval" hidden role="group" aria-labelledby="liveApprovalTitle"><div class="live-approval-copy"><span class="approval-mark">Ⅱ</span><div><strong id="liveApprovalTitle">Review the plan</strong><p>Check the proposed actions in the preview. The test pauses here until you approve it.</p></div></div><div class="live-approval-actions"><button class="cta sm" id="approveLive">Approve &amp; run</button><button class="cta sm ghost" id="declineLive">Cancel run</button></div></div></div></section>
 <section class="card live-card"><div class="live-head"><div><strong>Live target preview</strong><div class="live-kicker" id="previewKicker">LIVE DEMO APP · REAL PAGE</div></div><span class="browser-badge" id="browserBadge" data-state="idle">WAITING</span></div><div class="browser-chrome"><div class="browser-dots"><i></i><i></i><i></i></div><div class="browser-address" id="browserAddress">/demo/v1/signup</div><span style="color:#8189a0;font-size:11px">↻</span></div><div class="browser-viewport" id="browserViewport" data-mode="idle"><span class="demo-preview-state" id="previewState">LIVE APP</span><div class="demo-app"><div class="demo-app-bar" id="demoAppBar"><span>◈ DEMO APP</span><span>Help&nbsp;&nbsp; Account</span></div><div class="demo-app-main" id="demoAppMain"></div></div></div><div class="inspector" id="locatorInspector"><div><small>CURRENT LOCATOR</small><strong id="locatorTitle">Waiting for agent</strong></div><div><small>AGENT ACTION</small><code id="locatorCode">No interaction yet</code></div></div></section></div></section>
 
 <section class="sec rv" id="smart-report"><h2>Smart report</h2><p>A live health check built only from the real runs made in this browser session.</p>
@@ -665,6 +694,65 @@ window.burst=function(col,n){const r=$("#steps").getBoundingClientRect(),x=r.lef
 function tk(){g.clearRect(0,0,fx.width,fx.height);Q=Q.filter(p=>p.l>0);for(const p of Q){p.x+=p.vx;p.y+=p.vy;p.vx*=.97;p.vy=p.vy*.97+.13;p.l-=.013;g.globalAlpha=Math.max(p.l,0);g.fillStyle=g.shadowColor=p.c;g.shadowBlur=12;g.beginPath();g.arc(p.x,p.y,p.r,0,7);g.fill()}g.globalAlpha=1;if(Q.length)requestAnimationFrame(tk);else{on=false;g.clearRect(0,0,fx.width,fx.height)}}
 })();
 (function(){const cv=$('#bg'),ctx=cv.getContext('2d',{alpha:true,desynchronized:true}),reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;let W=0,H=0,P=[],last=0,active=true,raf=0;const color='67,197,176';function resize(){const dpr=Math.min(1,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);const count=Math.min(24,Math.max(10,Math.floor(W*H/50000)));P=Array.from({length:count},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18}))}function draw(t){raf=0;if(!active||document.hidden)return;if(!reduce&&t-last<48){raf=requestAnimationFrame(draw);return}last=t;ctx.clearRect(0,0,W,H);for(let i=0;i<P.length;i++){const p=P[i];if(!reduce){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1}ctx.fillStyle='rgba('+color+',.48)';ctx.beginPath();ctx.arc(p.x,p.y,1.1,0,Math.PI*2);ctx.fill();if(i%2===0){for(let j=i+1;j<P.length;j+=2){const q=P[j],dx=p.x-q.x,dy=p.y-q.y,d2=dx*dx+dy*dy;if(d2<10000){ctx.strokeStyle='rgba('+color+','+(.12*(1-Math.sqrt(d2)/100))+')';ctx.lineWidth=.65;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke()}}}}if(!reduce)raf=requestAnimationFrame(draw)}function start(){active=true;if(!raf&&!document.hidden)raf=requestAnimationFrame(draw)}function stop(){active=false;if(raf){cancelAnimationFrame(raf);raf=0}}resize();addEventListener('resize',resize,{passive:true});document.addEventListener('visibilitychange',()=>document.hidden?stop():start());if(reduce)draw(0);else start()})();
+
+;(function(){
+ const $=s=>document.querySelector(s);
+ const std=$('#tpPipeStd'),ag=$('#tpPipeAgent');if(!std||!ag)return;
+ const sN=[$('#tpS0'),$('#tpS1'),$('#tpS2'),$('#tpS3'),$('#tpS4')];
+ const sL=[...std.querySelectorAll('.tp-link')];
+ const aN=[$('#tpA0'),$('#tpA1'),$('#tpA2'),$('#tpA3'),$('#tpA4')];
+ const aL=[...ag.querySelectorAll(':scope > .tp-link')];
+ const loop=$('#tpLoop'),tag=$('#tpLoopTag');
+ function setN(el,st){if(!el)return;el.classList.remove('done','act','wait','bad');if(st)el.classList.add(st);}
+ function stepStates(){return [...document.querySelectorAll('#liveStepList .live-step')].map(e=>e.classList.contains('done')?'done':e.classList.contains('failed')?'bad':e.classList.contains('active')?'act':'');}
+ function mode(){const c=document.querySelector('.mchip.on');return c?c.dataset.mode:'test';}
+ function approvalUp(){const g=$('#liveApproval');return g&&!g.hidden;}
+ function paintLinks(nodes,links){
+  let last=-1;nodes.forEach((n,i)=>{if(n.classList.contains('done'))last=i;});
+  links.forEach((l,i)=>{l.classList.toggle('full',i<last||(i===last&&nodes[i+1]&&(nodes[i+1].classList.contains('act')||nodes[i+1].classList.contains('wait')||nodes[i+1].classList.contains('done')||nodes[i+1].classList.contains('bad'))));l.classList.toggle('flow',i===last&&nodes[i+1]&&(nodes[i+1].classList.contains('act')||nodes[i+1].classList.contains('wait')));});
+ }
+ function render(){
+  const m=mode();
+  std.style.display=m==='agent'?'none':'flex';
+  ag.style.display=m==='agent'?'flex':'none';
+  const st=stepStates();while(st.length<6)st.push('');
+  if(m!=='agent'){
+   const v=(st[4]==='bad'||st[5]==='bad')?'bad':(st[4]==='act'||st[5]==='act')?'act':(st[4]==='done'&&st[5]==='done')?'done':(st[4]==='done'||st[5]==='done')?'act':'';
+   const map=[st[0],st[1],st[2],st[3],v];
+   sN.forEach((n,i)=>setN(n,map[i]));
+   if(approvalUp()&&map[3]!=='done')setN(sN[3],'wait');
+   paintLinks(sN,sL);
+  }else{
+   setN(aN[0],st[3]);
+   if(approvalUp()&&st[3]!=='done')setN(aN[0],'wait');
+   const ls=st[4];
+   loop.classList.remove('run','done','bad');
+   if(ls==='act')loop.classList.add('run');else if(ls==='done')loop.classList.add('done');else if(ls==='bad')loop.classList.add('bad');
+   const inner=ls==='act'?'act':ls==='done'?'done':ls==='bad'?'bad':'';
+   setN(aN[1],inner);setN(aN[2],inner);setN(aN[3],inner);
+   setN(aN[4],st[5]);
+   paintLinks([aN[0],aN[1],aN[4]],aL);
+   if(ls!=='act'&&ls!=='done')tag.textContent='repeats per step';
+  }
+ }
+ render();
+ const mo=new MutationObserver(render);
+ mo.observe($('#liveStepList'),{subtree:true,attributes:true,attributeFilter:['class']});
+ mo.observe($('#modeChips'),{subtree:true,attributes:true,attributeFilter:['class']});
+ const la=$('#liveApproval');if(la)mo.observe(la,{attributes:true,attributeFilter:['hidden']});
+ setInterval(async()=>{
+  try{
+   if(mode()!=='agent')return;
+   const ls=$('#liveStatus');if(!ls||ls.dataset.state!=='work')return;
+   if(typeof session==='undefined'||!session||!session.id)return;
+   const r=await fetch('/api/live/'+encodeURIComponent(session.id)+'/state',{cache:'no-store'});
+   if(!r.ok)return;
+   const d=await r.json();
+   const n=((d&&d.actions)||[]).filter(a=>a.status==='done').length;
+   if(n>0)tag.textContent='repeats per step - '+n+' action'+(n>1?'s':'')+' done';
+  }catch(e){}
+ },1500);
+})();
 </script>
 </body>
 </html>
